@@ -1,0 +1,6 @@
+# 本地运行数据（埋点数据库由服务端自动创建）
+data/
+# Python 缓存
+__pycache__/
+*.pyc
+.DS_Store

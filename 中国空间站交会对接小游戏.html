@@ -1,0 +1,4122 @@
+<!DOCTYPE html>
+<!-- saved from url=(0034)https://test.brucewen.com/cw_game/ -->
+<html lang="zh-CN"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>中国空间站交会对接小游戏</title>
+  <style>
+    :root {
+      --sidebar-w: 372px;
+      --bg0: #06080f;
+      --panel: rgba(20, 26, 40, 0.82);
+      --panel2: rgba(14, 18, 30, 0.65);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.62);
+      --accent: rgba(123, 223, 242, 0.95);
+      --good: rgba(90, 220, 140, 0.95);
+      --bad: rgba(255, 90, 90, 0.95);
+      --warn: rgba(255, 209, 102, 0.95);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: flex;
+      background: radial-gradient(1200px 600px at 70% 30%, #18224a 0%, var(--bg0) 45%, #02030a 100%);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft Yahei", Arial;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: var(--sidebar-w);
+      padding: 18px 16px;
+      overflow: auto;
+      background: linear-gradient(180deg, rgba(10,12,20,0.96) 0%, rgba(8,10,18,0.9) 100%);
+      border-right: 1px solid rgba(255,255,255,0.08);
+    }
+    .title { font-size: 19px; font-weight: 800; margin: 0 0 10px; }
+    .intro{
+      margin: 0 0 10px;
+      color: rgba(255,255,255,0.86);
+      font-size: 14px;
+      line-height: 1.55;
+      text-align: left;
+    }
+
+    .subtitle {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .control {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 12px 12px;
+      margin-bottom: 12px;
+    }
+
+    .controlGrid{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .controlGrid .control{ margin-bottom: 0; }
+    /* v24: 缩短“初始速度设置框”高度到约 1/3（仅影响 controlGrid 内两块初始速度卡片） */
+    .controlGrid .control{ padding: 4px 10px; }
+    .controlGrid .row{ margin-bottom: 2px; }
+    .controlGrid input[type="range"]{ margin-top: 0; }
+
+    /* v24: 仅缩小两行初始速度标题字号 */
+    .smallInitLabel{ font-size: 12px; }
+    @media (max-width: 520px){
+      /* Keep the two initial-speed sliders on ONE row in phone portrait to save screen space */
+      .controlGrid{
+        grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+        gap: 6px;
+      }
+      /* Further compact only the two init-speed cards on small screens */
+      .controlGrid .control{ padding: 3px 8px; }
+      .controlGrid .row{ margin-bottom: 1px; gap: 6px; }
+      .controlGrid .label.smallInitLabel{ font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .controlGrid .value{ font-size: 12px; padding: 1px 6px; }
+      .controlGrid input[type="range"]{ margin-top: 0; }
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .label { font-size: 14px; color: var(--muted); user-select: none; }
+    .value {
+      font-variant-numeric: tabular-nums;
+      font-size: 14px;
+      color: var(--text);
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      cursor: default;
+      user-select: none;
+    }
+    .value.editable { cursor: text; }
+    .value.locked { opacity: 0.65; }
+    input[type="range"] { width: 100%; accent-color: rgba(123,223,242,0.92); }
+    .btnRow { display: grid; grid-template-columns: 1.5fr 0.85fr 1.05fr; gap: 8px; }
+    .btn {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 12px;
+      font-weight: 800;
+      color: rgba(0,0,0,0.92);
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+      transition: transform 0.08s ease, filter 0.15s ease;
+      user-select: none;
+    }
+    .btn:hover { filter: brightness(1.05); }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { cursor: not-allowed; filter: grayscale(0.7) brightness(0.85); }
+    .btnPrimary {
+      background: linear-gradient(90deg, rgba(123,223,242,0.95) 0%, rgba(178,247,239,0.95) 100%);
+    }
+    .btnAbort {
+      background: linear-gradient(90deg, rgba(255, 209, 102, 0.95) 0%, rgba(255, 170, 90, 0.95) 100%);
+    }
+    .btnPause {
+      background: linear-gradient(90deg, rgba(178, 247, 239, 0.95) 0%, rgba(123, 223, 242, 0.95) 100%);
+    }
+    .btnPause.isPaused {
+      background: linear-gradient(90deg, rgba(90, 220, 140, 0.95) 0%, rgba(178, 247, 239, 0.95) 100%);
+    }
+    .hint {
+      margin-top: 12px;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+
+    .speedRow{
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+      margin-bottom: 2px;
+    }
+    .speedBtn{
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-weight: 900;
+      color: rgba(255,255,255,0.90);
+      background: rgba(255,255,255,0.06);
+      cursor: pointer;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+      transition: transform 0.08s ease, filter 0.15s ease, background 0.15s ease;
+      user-select: none;
+    }
+    .speedBtn:hover{ filter: brightness(1.06); }
+    .speedBtn:active{ transform: translateY(1px); }
+    .speedBtn.active{
+      background: linear-gradient(90deg, rgba(123,223,242,0.35) 0%, rgba(178,247,239,0.22) 100%);
+      border-color: rgba(123,223,242,0.45);
+    }
+
+    .zoomRow{
+      display: grid;
+      grid-template-columns: 0.55fr 1fr 0.55fr 1.15fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .zoomVal{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.06);
+      font-weight: 900;
+      font-size: 15px;
+      letter-spacing: 0.3px;
+      color: rgba(255,255,255,0.92);
+      user-select: none;
+    }
+    .zoomVal.manual{
+      color: rgba(123,223,242,0.98);
+      border-color: rgba(123,223,242,0.45);
+    }
+
+    .rulesCard{
+      margin-top: 12px;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+      text-align: center;
+    }
+    .rulesTitle{
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: 0.4px;
+      color: rgba(255,255,255,0.93);
+      margin-bottom: 8px;
+    }
+    .rulesBody{
+      font-size: 14px;
+      line-height: 1.65;
+      color: rgba(255,255,255,0.76);
+    }
+
+    .hint code {
+      background: rgba(255,255,255,0.06);
+      padding: 1px 6px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .viewport { position: relative; flex: 1; min-width: 0; }
+    canvas { width: 100%; height: 100%; display: block; }
+    .hud {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      min-width: 280px;
+      padding: 10px 12px;
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 14px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+      pointer-events: auto;
+      cursor: grab;
+      touch-action: none;
+      /* v24: HUD 缩小至原来的 3/4 */
+      transform: scale(0.75);
+      transform-origin: 0 0;
+    }
+    .hud.dragging{ cursor: grabbing; }
+    .hud .status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: var(--panel2);
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--muted); }
+    .telemetry {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 10px;
+      font-variant-numeric: tabular-nums;
+      font-size: 14px;
+      color: rgba(255,255,255,0.86);
+    }
+    .k { color: var(--muted); }
+    .watermark {
+      position: absolute;
+      right: 14px;
+      bottom: 12px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+      user-select: none;
+      pointer-events: none;
+    }
+    .numInput {
+      width: 84px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(0,0,0,0.35);
+      color: rgba(255,255,255,0.92);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      outline: none;
+    }
+  
+    .qrPanel{
+      margin-top: 12px;
+      padding: 15px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.92);
+      color: rgba(0,0,0,0.86);
+      box-shadow: 0 14px 30px rgba(0,0,0,0.28);
+      border: 1px solid rgba(0,0,0,0.10);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;      gap: 10px;
+      min-height: 270px;
+    }
+    .qrBlock{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .qrTitleSmall{
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.2px;
+      color: rgba(0,0,0,0.78);
+      text-align: center;
+      white-space: nowrap;
+    }
+    .qrPanel canvas{ display:block; }
+    #gameQr{
+      width: 192px;
+      height: 192px;
+      background: #fff;
+      border-radius: 0px;
+      border: 1px solid rgba(0,0,0,0.10);
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      -ms-interpolation-mode: nearest-neighbor;
+    }
+    #courseQr{
+      width: 128px;
+      height: 128px;
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.10);
+      object-fit: contain;
+      display: block;
+    }
+    .qrHint{
+      font-size: 10px;
+      line-height: 1.2;
+      color: rgba(0,0,0,0.62);
+      text-align: center;
+      max-width: 140px;
+      word-break: break-all;
+    }
+    #gameQr{ cursor: pointer; }
+
+    /* ===== v27: 二维码浮窗（可收起到侧边） ===== */
+    .qrFloat{
+      position: fixed;
+      right: 14px;
+      bottom: 14px;
+      z-index: 7;
+      padding: 12px 14px 10px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.94);
+      color: rgba(0,0,0,0.86);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+      border: 1px solid rgba(0,0,0,0.10);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: transform .28s cubic-bezier(.4,0,.2,1), opacity .28s ease;
+    }
+    .qrFloat .qrClose{
+      position: absolute;
+      right: 6px;
+      top: 6px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.14);
+      background: rgba(0,0,0,0.05);
+      color: rgba(0,0,0,0.6);
+      font: inherit;
+      font-size: 13px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .qrFloat .qrClose:hover{ background: rgba(0,0,0,0.12); }
+    body.qr-hidden .qrFloat{ transform: translateX(130%); opacity: 0; pointer-events: none; }
+    .qrTab{
+      position: fixed;
+      right: 0;
+      bottom: 110px;
+      z-index: 7;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 8px;
+      border-radius: 14px 0 0 14px;
+      border: 1px solid rgba(123,223,242,0.36);
+      border-right: none;
+      background: linear-gradient(180deg, rgba(20,28,46,0.96), rgba(8,12,20,0.96));
+      color: var(--text);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      writing-mode: vertical-rl;
+      cursor: pointer;
+      box-shadow: -10px 0 30px rgba(0,0,0,0.4);
+      backdrop-filter: blur(10px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease;
+      user-select: none;
+    }
+    body.qr-hidden .qrTab{ opacity: 1; pointer-events: auto; }
+    .qrTab:hover{ border-color: rgba(123,223,242,0.7); color: #fff; }
+
+    /* ===== v27: Δv 放大镜（脉冲施加前的速度增量预览） ===== */
+    .dvScope{
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(123,223,242,0.24);
+      border-radius: 14px;
+      padding: 9px 10px 8px;
+      margin-bottom: 12px;
+    }
+    .dvScopeHead{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .dvScopeHead b{ color: var(--accent); font-weight: 800; }
+    .dvScope canvas{
+      display: block;
+      width: 100%;
+      height: 118px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: radial-gradient(220px 130px at 50% 50%, rgba(123,223,242,0.10), rgba(0,0,0,0.32));
+    }
+    .dvScopeVal{
+      margin-top: 6px;
+      font-size: 12px;
+      text-align: center;
+      color: rgba(255,255,255,0.80);
+      font-variant-numeric: tabular-nums;
+    }
+    .tickRow{
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      margin-top: 3px;
+      padding-top: 7px;
+      font-size: 11px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      user-select: none;
+    }
+    /* 刻度：-0.20 → +0.20 每 0.01 一条小刻度，每 0.02 一条更亮的主刻度 */
+    .tickRow::before{
+      content: "";
+      position: absolute;
+      left: 7px;
+      right: 7px;
+      top: 0;
+      height: 5px;
+      background:
+        repeating-linear-gradient(90deg,
+          rgba(255,255,255,0.55) 0 1px,
+          transparent 1px calc(100% / 20)),
+        repeating-linear-gradient(90deg,
+          rgba(255,255,255,0.22) 0 1px,
+          transparent 1px calc(100% / 40));
+    }
+
+    .qrText{
+      grid-column: 1 / -1;
+      font-size: 11px;
+      line-height: 1.35;
+      color: rgba(0,0,0,0.72);
+      text-align: left;
+      word-break: break-word;
+    }
+
+  
+    /* ===== v25: 项目运行数据面板（需求一） ===== */
+    .statsDock{
+      position: absolute;
+      right: 14px;
+      top: 14px;
+      z-index: 6;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .statsBadge{
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: var(--panel);
+      color: var(--text);
+      font: inherit;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+      cursor: pointer;
+      user-select: none;
+    }
+    .statsBadge:hover{ border-color: rgba(123,223,242,0.45); }
+    .statsBadge .statItem{ display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
+    .statsBadge .statItem b{ font-size: 15px; font-weight: 900; letter-spacing: 0.3px; }
+    .statsBadge .statItem i{ font-style: normal; font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .statsBadge .statSep{ width: 1px; height: 22px; background: rgba(255,255,255,0.12); }
+    .statsBadge .statState{ font-size: 11px; color: var(--muted); }
+    .statsBadge.isOffline .statItem,
+    .statsBadge.isOffline .statSep{ display: none; }
+    .statsCard{
+      pointer-events: auto;
+      width: min(340px, calc(100vw - 28px));
+      padding: 14px 14px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(180deg, rgba(18,24,38,0.97) 0%, rgba(10,14,24,0.97) 100%);
+      box-shadow: 0 18px 44px rgba(0,0,0,0.45);
+      backdrop-filter: blur(14px);
+      color: var(--text);
+    }
+    .statsCard[hidden]{ display: none; }
+    .statsCard h3{
+      margin: 0 0 4px;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.3px;
+    }
+    .statsCard .cardSub{
+      margin: 0 0 10px;
+      font-size: 10px;
+      line-height: 1.4;
+      color: var(--muted);
+    }
+    .statsGrid{
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .statsGrid .cell{
+      padding: 8px 6px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.07);
+      text-align: center;
+    }
+    .statsGrid .cell b{ display: block; font-size: 15px; font-variant-numeric: tabular-nums; }
+    .statsGrid .cell span{ display: block; margin-top: 3px; font-size: 10px; color: var(--muted); }
+    .statsList{ margin: 0 0 10px; padding: 0; list-style: none; font-size: 11px; line-height: 1.55; color: rgba(255,255,255,0.78); }
+    .statsList li{ display: flex; gap: 8px; margin-bottom: 4px; }
+    .statsList li em{ flex: 0 0 62px; font-style: normal; color: var(--muted); }
+    .statsList li span{ flex: 1 1 auto; word-break: break-word; }
+    .statsFoot{ display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .statsFoot .updated{ font-size: 10px; color: var(--muted); }
+    .statsCopy{
+      border: 1px solid rgba(123,223,242,0.4);
+      background: rgba(123,223,242,0.14);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+    }
+    .statsCopy:hover{ background: rgba(123,223,242,0.22); }
+    .statsBadge.offline .statItem b{ color: var(--muted); font-size: 12px; }
+
+    /* ===== Mobile (H5) responsive layout ===== */
+    @media (max-width: 900px){
+      body{ flex-direction: column; }
+      /* v27: 手机上不需要“扫码玩”，直接隐藏二维码浮窗与侧边标签，避免遮挡画面 */
+      .qrFloat, .qrTab{ display: none !important; }
+      .sidebar{
+        width: 100%;
+        max-height: 52dvh;
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+      .viewport{ flex: 1 1 auto; min-height: 0; }
+      .watermark{ right: 10px; left: auto; }
+    }
+    @media (max-width: 520px){
+      .btnRow{ flex-wrap: wrap; }
+      .btn{ flex: 1 1 48%; }
+      .speedRow{ flex-wrap: wrap; }
+      .speedBtn{ flex: 1 1 30%; }
+      .qrPanel{ grid-template-columns: 1fr; }
+      #gameQr, #courseQr{ width: 168px; height: 168px; }
+      .qrHint{ max-width: 100%; }
+      /* v25: 手机上压缩数据面板，避免遮挡仿真画面 */
+      .statsDock{ right: 8px; top: 8px; gap: 6px; }
+      .statsBadge{ padding: 6px 10px; gap: 7px; }
+      .statsBadge .statItem b{ font-size: 13px; }
+      .statsBadge .statItem i{ font-size: 9px; }
+      .statsBadge .statSep{ height: 18px; }
+    }
+
+    /* ===== v26: AI 助教侧栏（需求二） ===== */
+    :root{ --ai-w: min(396px, 100vw); }
+
+    .aiTab{
+      position: fixed;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 9px;
+      border-radius: 14px 0 0 14px;
+      border: 1px solid rgba(123,223,242,0.36);
+      border-right: none;
+      background: linear-gradient(180deg, rgba(20,28,46,0.96), rgba(8,12,20,0.96));
+      color: var(--text);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      writing-mode: vertical-rl;
+      cursor: pointer;
+      box-shadow: -10px 0 30px rgba(0,0,0,0.4);
+      backdrop-filter: blur(10px);
+      transition: opacity .2s ease;
+      user-select: none;
+    }
+    .aiTab:hover{ border-color: rgba(123,223,242,0.7); color: #fff; }
+    .aiTab .aiTabDot{
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(123,223,242,0.9);
+    }
+    body.ai-open .aiTab{ opacity: 0; pointer-events: none; }
+    @media (min-width: 1100px){
+      body.ai-open .statsDock{ right: calc(var(--ai-w) + 14px); }
+    }
+
+    .aiDrawer{
+      position: fixed;
+      right: 0; top: 0; bottom: 0;
+      width: var(--ai-w);
+      z-index: 9;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, rgba(12,17,28,0.985), rgba(6,9,16,0.99));
+      border-left: 1px solid rgba(123,223,242,0.22);
+      box-shadow: -18px 0 50px rgba(0,0,0,0.5);
+      transform: translateX(103%);
+      transition: transform .3s cubic-bezier(.4,0,.2,1);
+      color: var(--text);
+      font: inherit;
+    }
+    body.ai-open .aiDrawer{ transform: translateX(0); }
+
+    .aiHead{
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .aiHead h3{ margin: 0; font-size: 13.5px; font-weight: 900; letter-spacing: .3px; }
+    .aiMode{
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,209,102,0.35);
+      font-size: 10px;
+      color: rgba(255,209,102,0.95);
+      white-space: nowrap;
+    }
+    .aiMode .dot{ width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
+    .aiMode.online{ border-color: rgba(90,220,140,0.4); color: var(--good); }
+    .aiMode.online .dot{ background: var(--good); }
+    .aiClose{
+      flex: 0 0 auto;
+      width: 26px; height: 26px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      font: inherit;
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .aiClose:hover{ background: rgba(255,255,255,0.12); }
+
+    .aiBody{
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 12px 14px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .aiQuick{ display: flex; flex-wrap: wrap; gap: 6px; }
+    .aiChip{
+      border: 1px solid rgba(123,223,242,0.3);
+      background: rgba(123,223,242,0.1);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 5px 10px;
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .aiChip:hover{ background: rgba(123,223,242,0.2); }
+    .aiLog{ display: flex; flex-direction: column; gap: 10px; }
+
+    .aiMsg{ display: flex; flex-direction: column; gap: 4px; }
+    .aiMsg .who{ font-size: 9.5px; letter-spacing: .6px; color: var(--muted); padding-left: 2px; }
+    .aiMsg .bubble{
+      padding: 9px 11px;
+      border-radius: 12px;
+      font-size: 12.5px;
+      line-height: 1.62;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.09);
+    }
+    .aiMsg.user{ align-items: flex-end; }
+    .aiMsg.user .bubble{ background: rgba(123,223,242,0.16); border-color: rgba(123,223,242,0.35); }
+    .aiMsg.note .bubble{
+      background: rgba(255,209,102,0.1);
+      border-color: rgba(255,209,102,0.28);
+      font-size: 12px;
+    }
+    .aiMsg.err .bubble{ border-color: rgba(255,90,90,0.4); color: rgba(255,190,190,0.95); }
+
+    .aiThink{
+      flex: 0 0 auto;
+      margin: 0 14px 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.035);
+    }
+    .aiThink summary{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+    .aiThink summary::-webkit-details-marker{ display: none; }
+    .aiThink summary b{ color: var(--text); font-size: 11px; font-weight: 800; }
+    .aiThink summary span{ margin-left: auto; font-size: 9.5px; }
+    .aiThink[open] summary{ border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .aiThinkBody{
+      max-height: 188px;
+      overflow-y: auto;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 11px;
+      line-height: 1.55;
+    }
+    .thinkTurn{ border-left: 2px solid rgba(123,223,242,0.32); padding-left: 8px; }
+    .thinkTurn .th{ font-size: 9.5px; letter-spacing: .5px; color: var(--muted); margin-bottom: 3px; }
+    .thinkStep{ margin-bottom: 6px; }
+    .thinkStep:last-child{ margin-bottom: 0; }
+    .thinkStep .st{
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 10.5px;
+      color: rgba(123,223,242,0.95);
+    }
+    .thinkStep .st i{ font-style: normal; color: var(--muted); }
+    .thinkKv{ margin: 2px 0 0; padding: 0; list-style: none; color: rgba(255,255,255,0.74); }
+    .thinkKv li em{ font-style: normal; color: var(--muted); }
+    .thinkKv li b{ color: var(--text); font-weight: 800; }
+    .thinkEmpty{ color: var(--muted); font-size: 10.5px; }
+    .thinkTurn .thinkEnd{ font-size: 9.5px; letter-spacing: .5px; color: rgba(126,231,135,0.82); margin-top: 4px; }
+
+    .recCard{
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(90,220,140,0.32);
+      background: linear-gradient(180deg, rgba(90,220,140,0.09), rgba(255,255,255,0.025));
+    }
+    .recCard header{ display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; }
+    .recCard .tag{
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: var(--good);
+      color: #06120b;
+      font-size: 9px;
+      font-weight: 900;
+    }
+    .recTable{ width: 100%; border-collapse: collapse; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+    .recTable th{
+      text-align: left;
+      font-weight: 600;
+      color: var(--muted);
+      padding: 3px 4px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      white-space: nowrap;
+    }
+    .recTable td{ padding: 4px; border-bottom: 1px solid rgba(255,255,255,0.06); white-space: nowrap; }
+    .recTable tr.best td{ color: #c9ffe0; font-weight: 700; }
+    .recRowBtns{ display: flex; gap: 5px; }
+    .recAdopt, .recRun{
+      border-radius: 7px;
+      padding: 3px 7px;
+      font: inherit;
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      border: 1px solid rgba(123,223,242,0.4);
+      background: rgba(123,223,242,0.14);
+      color: var(--text);
+    }
+    .recRun{ border-color: rgba(90,220,140,0.5); background: rgba(90,220,140,0.18); }
+    .recAdopt:hover{ background: rgba(123,223,242,0.26); }
+    .recRun:hover{ background: rgba(90,220,140,0.3); }
+    .recNote{ font-size: 9.5px; line-height: 1.5; color: var(--muted); }
+
+    .aiForm{
+      flex: 0 0 auto;
+      display: flex;
+      gap: 8px;
+      padding: 8px 14px 6px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .aiInput{
+      flex: 1 1 auto;
+      height: 42px;
+      max-height: 96px;
+      resize: none;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      font: inherit;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .aiInput:focus{ outline: none; border-color: rgba(123,223,242,0.5); }
+    .aiSend{
+      flex: 0 0 auto;
+      align-self: flex-end;
+      height: 42px;
+      padding: 0 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(123,223,242,0.45);
+      background: rgba(123,223,242,0.18);
+      color: var(--text);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .aiSend:hover{ background: rgba(123,223,242,0.28); }
+    .aiSend:disabled{ opacity: .45; cursor: default; }
+    .aiFoot{
+      flex: 0 0 auto;
+      padding: 0 14px 10px;
+      font-size: 9.5px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    @media (max-width: 900px){
+      :root{ --ai-w: 100vw; }
+      .aiTab{
+        top: auto;
+        bottom: 14px;
+        right: 12px;
+        transform: none;
+        flex-direction: row;
+        padding: 9px 14px;
+        border-radius: 999px;
+        border-right: 1px solid rgba(123,223,242,0.36);
+        letter-spacing: 1px;
+      }
+      .aiDrawer{
+        top: auto;
+        bottom: 0;
+        height: min(78dvh, 640px);
+        width: 100vw;
+        border-left: none;
+        border-top: 1px solid rgba(123,223,242,0.28);
+        border-radius: 16px 16px 0 0;
+        transform: translateY(105%);
+      }
+      body.ai-open .aiDrawer{ transform: translateY(0); }
+      body.ai-open .statsDock{ display: none; }
+      .aiThinkBody{ max-height: 150px; }
+    }
+    @media (prefers-reduced-motion: reduce){
+      .aiDrawer{ transition: none; }
+    }
+
+  </style>
+<style>.lottie-animation-container{width:var(--lottie-animation-container-width);height:var(--lottie-animation-container-height);background-color:var(--lottie-animation-container-background-color);overflow:hidden;margin:var(--lottie-animation-margin)}.lottie-animation-container svg{transform:scale(var(--lottie-animation-scale))}</style><style>.lottie-animation-container{width:var(--lottie-animation-container-width);height:var(--lottie-animation-container-height);background-color:var(--lottie-animation-container-background-color);overflow:hidden;margin:var(--lottie-animation-margin)}.lottie-animation-container svg{transform:scale(var(--lottie-animation-scale))}</style></head>
+<body>
+  <aside class="sidebar">
+    <h1 class="title">中国空间站交会对接小游戏</h1>
+    
+    <p class="intro">游戏说明：你在地面指挥交会对接任务，须选取合适的初始相对速度，让神舟飞船抵近中国空间站，进入绿色框视为任务成功，飞出红色框视为任务失败，加油！</p>
+<p class="subtitle">
+      默认 4 倍速，可在运行中切换 1×/2×/4×/8×倍速。<b>点击数值可直接输入</b>（量程 ±0.20，可精确到 0.01）。
+      支持多次脉冲机动（课件里的 4~5 次跳跃）：<b>暂停</b>后改参数，再点“执行脉冲机动”，飞船从当前位置继续跳，轨迹保留不清零；<b>重置位置</b>则回到起点重来。
+      <b>手动缩放</b>：点 −/＋ 或在画面上滚动滚轮即可固定视角倍率，点“自适应”恢复随距离自动缩放。
+    </p>
+
+    <div class="controlGrid">
+      <div class="control">
+        <div class="row">
+          <div class="label smallInitLabel" title="初始径向速度 vx0">径向 vx0</div>
+          <div class="value editable" id="vxVal" title="点击可直接输入数值">0.00</div>
+        </div>
+        <input id="vx" type="range" min="-0.2" max="0.2" step="0.01" value="0.2">
+        <div class="tickRow" aria-hidden="true"><span>-0.2</span><span>0</span><span>+0.2</span></div>
+      </div>
+
+      <div class="control">
+        <div class="row">
+          <div class="label smallInitLabel" title="初始横向速度 vy0">横向 vy0</div>
+          <div class="value editable" id="vyVal" title="点击可直接输入数值">0.00</div>
+        </div>
+        <input id="vy" type="range" min="-0.2" max="0.2" step="0.01" value="0">
+        <div class="tickRow" aria-hidden="true"><span>-0.2</span><span>0</span><span>+0.2</span></div>
+      </div>
+    </div>
+
+    <div class="dvScope">
+      <div class="dvScopeHead"><span>Δv 放大镜 · 施加前预览</span><b>方向 / 大小</b></div>
+      <canvas id="dvScope" width="640" height="236"></canvas>
+      <div class="dvScopeVal" id="dvScopeVal">vx0 = 0.00 · vy0 = 0.00 · |Δv| = 0.000 m/s</div>
+    </div>
+
+    <div class="btnRow">
+      <button class="btn btnPrimary" id="startBtn">执行脉冲机动</button>
+      <button class="btn btnPause" id="pauseBtn" disabled="">暂停</button>
+      <button class="btn btnAbort" id="resetBtn">重置位置</button>
+    </div>
+
+    <div class="speedRow">
+      <button class="speedBtn" id="speed1Btn" title="运行中可切换">1倍速</button>
+      <button class="speedBtn" id="speed2Btn" title="运行中可切换">2倍速</button>
+      <button class="speedBtn active" id="speed4Btn" title="运行中可切换">4倍速</button>
+      <button class="speedBtn" id="speed8Btn" title="运行中可切换">8倍速</button>
+    </div>
+
+    <div class="zoomRow">
+      <button class="speedBtn" id="zoomOutBtn" title="缩小视角（也可在画面上滚动滚轮）">−</button>
+      <div class="zoomVal" id="zoomVal" title="当前缩放倍率">1.00×</div>
+      <button class="speedBtn" id="zoomInBtn" title="放大视角（也可在画面上滚动滚轮）">＋</button>
+      <button class="speedBtn active" id="zoomAutoBtn" title="恢复随距离自动缩放">自适应</button>
+    </div>
+</aside>
+
+  <main class="viewport">
+    <div class="hud" id="hud">
+      <div class="status">
+        <div class="badge" id="statusBadge" style="border-color: rgba(255, 255, 255, 0.55);"><span class="dot" id="statusDot" style="background: rgba(255, 255, 255, 0.55);"></span><span id="statusText">STANDBY</span></div>
+        <div class="value" id="msgText" style="color: rgba(255,255,255,0.72); font-size:14px; border:0; background:transparent;"></div>
+      </div>
+      <div class="telemetry">
+        <div class="k">Rel x (径向)</div><div id="teleX">0.0</div>
+        <div class="k">Rel y (横向)</div><div id="teleY">200.0</div>
+        <div class="k">对接距离</div><div id="teleDist">200.0</div>
+      </div>
+    </div>
+    <canvas id="c" width="2344" height="1658" style="width: 1172px; height: 829px;"></canvas>
+
+    <!-- v25: 项目运行数据（需求一）——只展示服务端权威统计值，离线时显示"离线模式" -->
+    <div class="statsDock" id="statsDock">
+      <button class="statsBadge" id="statsBadge" type="button" aria-expanded="false" aria-controls="statsCard" title="查看项目运行数据与统计口径">
+        <span class="statItem"><b id="statUV">—</b><i>累计使用</i></span>
+        <span class="statSep"></span>
+        <span class="statItem"><b id="statTerm">—</b><i>本学期</i></span>
+        <span class="statSep"></span>
+        <span class="statItem"><b id="statToday">—</b><i>今日</i></span>
+        <span class="statState" id="statState" hidden>离线模式</span>
+      </button>
+
+      <section class="statsCard" id="statsCard" hidden>
+        <h3>项目运行数据</h3>
+        <p class="cardSub">数字只来自服务端统计接口，页面不做本地累计；本地打开或断网时不显示推测值。</p>
+        <div class="statsGrid">
+          <div class="cell"><b id="cardUV">—</b><span>累计使用人数</span></div>
+          <div class="cell"><b id="cardTerm">—</b><span>本学期</span></div>
+          <div class="cell"><b id="cardToday">—</b><span>今日</span></div>
+          <div class="cell"><b id="cardCompletes">—</b><span>完成对接人次</span></div>
+          <div class="cell"><b id="cardAvg">—</b><span>平均尝试次数</span></div>
+          <div class="cell"><b id="cardPv">—</b><span>累计访问</span></div>
+        </div>
+        <ul class="statsList">
+          <li><em>统计口径</em><span id="cardCaliber">—</span></li>
+          <li><em>去重规则</em><span>同一设备随机 ID 去重；不采集姓名、学号、手机号与 IP 明文</span></li>
+          <li><em>数据来源</em><span>服务端 /api/stats 权威值（非本地存储自增，原始日志可导出审计）</span></li>
+          <li><em>连接状态</em><span id="cardState">—</span></li>
+        </ul>
+        <div class="statsFoot">
+          <span class="updated" id="cardUpdated">—</span>
+          <button class="statsCopy" id="statsCopy" type="button">复制口径说明</button>
+        </div>
+      </section>
+    </div>
+    <div class="watermark">中国空间站交会对接</div>
+  </main>
+
+  <!-- v27: 二维码浮窗，可收起到左侧边缘 -->
+  <button class="qrTab" id="qrTab" type="button" title="展开二维码" aria-controls="qrFloat" aria-expanded="false">扫码玩</button>
+  <div class="qrFloat" id="qrFloat">
+    <button class="qrClose" id="qrClose" type="button" title="收起到侧边" aria-label="收起二维码">×</button>
+    <div class="qrTitleSmall">扫码在手机玩</div>
+    <canvas id="gameQr" width="256" height="256" title="点击可设置线上链接"></canvas>
+    <div class="qrHint" id="gameQrHint"></div>
+  </div>
+
+  <!-- v26: AI 助教侧栏（需求二）——模型只解释，数值全部来自本地确定性求解器 -->
+  <button class="aiTab" id="aiTab" type="button" aria-controls="aiDrawer" aria-expanded="false" title="打开 AI 助教">
+    <span class="aiTabDot" aria-hidden="true"></span><span>AI 助教</span>
+  </button>
+
+  <aside class="aiDrawer" id="aiDrawer" aria-label="AI 助教侧栏" aria-hidden="true">
+    <div class="aiHead">
+      <h3>AI 助教 · 相对运动</h3>
+      <span class="aiMode" id="aiMode" title="当前对话模式"><span class="dot"></span><span id="aiModeText">规则模式</span></span>
+      <button class="aiClose" id="aiClose" type="button" aria-label="收起侧栏">×</button>
+    </div>
+
+    <div class="aiBody" id="aiBody">
+      <div class="aiQuick" id="aiQuick">
+        <button class="aiChip" type="button" data-q="我为什么总是飞出去？">为什么总飞出去</button>
+        <button class="aiChip" type="button" data-q="推荐一组能稳定进入对接框的参数">推荐一组参数</button>
+        <button class="aiChip" type="button" data-q="我已经脉冲过一次了，下一发怎么打？">下一发怎么打</button>
+        <button class="aiChip" type="button" data-q="同样的参数，为什么换倍速结果不一样？">倍速差异</button>
+        <button class="aiChip" type="button" data-q="vx0 和 vy0 分别控制什么？">vx0 / vy0 含义</button>
+      </div>
+      <div class="aiLog" id="aiLog"></div>
+    </div>
+
+    <details class="aiThink" id="aiThink">
+      <summary><b>AI 思考面板</b><span id="aiThinkMeta">未调用</span></summary>
+      <div class="aiThinkBody" id="aiThinkBody">
+        <div class="thinkEmpty">这里只记录真实发生的工具调用：工具名、入参、耗时、求解器返回的数值。模型不产出任何参数。</div>
+      </div>
+    </details>
+
+    <form class="aiForm" id="aiForm" autocomplete="off">
+      <textarea class="aiInput" id="aiInput" rows="1" maxlength="240" placeholder="例如：为什么 8 倍速会失败？" aria-label="向 AI 助教提问"></textarea>
+      <button class="aiSend" id="aiSend" type="submit">发送</button>
+    </form>
+    <div class="aiFoot">数值由本地确定性求解器计算（CW 解析解 + 网格搜索 + 逐倍速采样校验），模型仅负责诊断与解释。</div>
+  </aside>
+
+  <script>
+    const state = {
+      n: 1.144035952968024e-03,
+      uiVx0: 0.2,
+      uiVy0: 0,
+      zoom: 1,
+      zoomTarget: 1,
+      // auto = 随对接距离自适应；manual = 手动锁定倍率（1×~6×）
+      zoomMode: "auto",
+      userZoom: 1,
+      // 当前实际倍率（每帧向目标平滑过渡，避免视角跳变）
+      viewZoom: 1,
+      baseTimeScale: 50,
+      speedMult: 4,
+      timeScale: 50,
+      margin: 50,
+      // 固定"世界坐标系"尺寸（与屏幕像素无关），确保不同屏幕同参数同结果
+      world: { w: 800, h: 600 },
+      // 对接判定框（世界坐标 m）：沿航向 y 方向宽 w，径向 x 方向高 h。
+      // 高度略大于天和核心舱照片高度，宽度更大，便于飞船沿横向真正抵近。
+      targetBox: { w: 100, h: 40 },
+      simTime: 0,
+      active: false,
+      paused: false,
+      burns: 0,
+      status: "STANDBY",
+      message: "",
+      locked: false,
+      run: null,
+      path: [],
+      stars: [],
+    };
+
+    // ===== v25: 教学行为埋点 + 项目运行数据面板（需求一） =====
+    // 设计约束：
+    // 1) 数字只来自服务端 /api/stats 权威值，本地不累计、不伪造；离线时显示“离线模式”。
+    // 2) 埋点不采集姓名/学号/手机号/IP 明文，仅随机设备 ID + 会话 ID。
+    // 3) 所有网络请求失败均静默降级，绝不阻塞或影响游戏内核。
+    const TIANGONG = (function () {
+      const CONFIG = {
+        // 留空 = 与页面同源（推荐：Cloudflare Worker 绑定同域名 /api/*）
+        apiBase: "",
+        module: "ch4_relative",       // 当前模块：第4章 相对运动 · CW 近程交会
+        chapterTag: "第4章 相对运动",
+        flushIntervalMs: 5000,
+        maxBatch: 20,
+        queueLimit: 200,
+        statsTimeoutMs: 6000,
+        statsRefreshMs: 60000,
+      };
+      const KEYS = {
+        visitor: "tg_visitor_id",
+        source: "tg_source",
+        backlog: "tg_event_backlog_v1",
+        statsCache: "tg_stats_cache_v1",
+      };
+      const canReport = location.protocol === "http:" || location.protocol === "https:";
+
+      const store = {
+        get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } },
+        set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+        del(k) { try { localStorage.removeItem(k); } catch (e) {} },
+        sget(k, d) { try { const v = sessionStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } },
+        sset(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} },
+      };
+
+      function uid() {
+        try {
+          if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        } catch (e) {}
+        return "v-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+      }
+
+      // 设备级随机 ID（非身份）；同一浏览器长期去重
+      const visitorId = store.get(KEYS.visitor, "") || uid();
+      store.set(KEYS.visitor, visitorId);
+      // 会话级 ID（关闭标签页即失效）
+      const sessionId = store.sget("tg_session_id", "") || uid();
+      store.sset("tg_session_id", sessionId);
+
+      // 渠道打标：优先 URL（?src= / ?utm_source=），同会话内保持首次来源
+      function resolveSource() {
+        if (!canReport) return "offline";
+        let raw = "";
+        try {
+          const p = new URLSearchParams(location.search);
+          raw = (p.get("src") || p.get("utm_source") || "").trim().slice(0, 40);
+        } catch (e) {}
+        if (raw) { store.sset(KEYS.source, raw); return raw; }
+        return store.sget(KEYS.source, "direct") || "direct";
+      }
+      const source = resolveSource();
+      const moduleId = CONFIG.module;
+      const chapterTag = CONFIG.chapterTag;
+
+      let queue = takeBacklog();
+      let flushTimer = null;
+      let paramTimer = null;
+      let lastParamKey = "";
+      let attempt = 0;
+      let running = false;
+      let runWallStart = 0;
+      let panelOpened = false;
+      let lastStats = null;
+      let statsInFlight = false;
+      let statsTimer = null;
+      const finishHooks = [];
+
+      function api(path) { return (CONFIG.apiBase || "") + path; }
+
+      function takeBacklog() {
+        const raw = store.get(KEYS.backlog, "");
+        if (!raw) return [];
+        store.del(KEYS.backlog);
+        try {
+          const arr = JSON.parse(raw);
+          return Array.isArray(arr) ? arr.slice(-CONFIG.queueLimit) : [];
+        } catch (e) { return []; }
+      }
+
+      function persistBacklog(batch) {
+        if (!batch || !batch.length) return;
+        let old = [];
+        try { old = JSON.parse(store.get(KEYS.backlog, "[]")) || []; } catch (e) { old = []; }
+        const merged = old.concat(batch).slice(-CONFIG.queueLimit);
+        store.set(KEYS.backlog, JSON.stringify(merged));
+      }
+
+      function schedule() {
+        if (flushTimer) return;
+        flushTimer = setTimeout(function () { flushTimer = null; flush(false); }, CONFIG.flushIntervalMs);
+      }
+
+      function sendBatch(batch, useBeacon) {
+        if (!canReport || !batch.length) return;
+        const body = JSON.stringify({ events: batch });
+        if (useBeacon && navigator.sendBeacon) {
+          try {
+            if (navigator.sendBeacon(api("/api/event"), new Blob([body], { type: "application/json" }))) return;
+          } catch (e) {}
+        }
+        fetch(api("/api/event"), {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: body,
+          keepalive: true,
+        }).then(function (res) {
+          if (!res.ok) throw new Error("HTTP " + res.status);
+        }).catch(function () {
+          persistBacklog(batch);
+        });
+      }
+
+      function flush(useBeacon) {
+        if (!canReport || !queue.length) return;
+        const batch = queue.splice(0, CONFIG.maxBatch);
+        sendBatch(batch, !!useBeacon);
+        if (queue.length) schedule();
+      }
+
+      function track(event, payload) {
+        if (!canReport) return;
+        const evt = {
+          ts: new Date().toISOString(),
+          visitor_id: visitorId,
+          session_id: sessionId,
+          module: moduleId,
+          source: source,
+          chapter_tag: chapterTag,
+          event: event,
+          payload: payload || null,
+        };
+        queue.push(evt);
+        if (queue.length > CONFIG.queueLimit) queue.splice(0, queue.length - CONFIG.queueLimit);
+        schedule();
+      }
+
+      function round(v, n) {
+        const p = Math.pow(10, n == null ? 4 : n);
+        return Math.round((Number(v) || 0) * p) / p;
+      }
+
+      // 参数变化：去抖 800ms，避免拖动滑条产生海量事件
+      function trackParam(vx, vy, how) {
+        const key = round(vx, 3) + "," + round(vy, 3);
+        if (key === lastParamKey) return;
+        lastParamKey = key;
+        clearTimeout(paramTimer);
+        paramTimer = setTimeout(function () {
+          track("param_change", { vx0: round(vx), vy0: round(vy), how: how || "slider" });
+        }, 800);
+      }
+
+      function runStarted(run) {
+        attempt += 1;
+        running = true;
+        runWallStart = Date.now();
+        track("run_start", {
+          attempt: attempt,
+          x0: round(run && run.x0, 2),
+          y0: round(run && run.y0, 2),
+          vx0: round(run && run.vx0),
+          vy0: round(run && run.vy0),
+        });
+      }
+
+      function runFinished(outcome, info) {
+        if (!running) return;
+        running = false;
+        const x = info && isFinite(info.x) ? info.x : null;
+        const y = info && isFinite(info.y) ? info.y : null;
+        track(outcome, {
+          attempt: attempt,
+          duration_ms: Date.now() - runWallStart,
+          sim_time_s: round(info && info.simTime, 2),
+          rel_x: x == null ? null : round(x, 2),
+          rel_y: y == null ? null : round(y, 2),
+          distance_m: (x == null || y == null) ? null : round(Math.hypot(x, y), 2),
+          reason: (info && info.reason) || "",
+        });
+        for (let i = 0; i < finishHooks.length; i++) {
+          try { finishHooks[i](outcome, info || {}, attempt); } catch (e) {}
+        }
+      }
+
+      function onRunFinished(fn) {
+        if (typeof fn === "function") finishHooks.push(fn);
+      }
+
+      function attempts() { return attempt; }
+
+      // ---------- 运行数据面板 ----------
+      function fmtNum(v) {
+        return (v == null || !isFinite(Number(v))) ? "—" : Number(v).toLocaleString("zh-CN");
+      }
+      function fmtAvg(v) {
+        return (v == null || !isFinite(Number(v))) ? "—" : Number(v).toFixed(1);
+      }
+      function fmtTime(t) {
+        if (!t) return "—";
+        const d = new Date(t);
+        if (isNaN(d.getTime())) return "—";
+        const p = function (n) { return String(n).padStart(2, "0"); };
+        return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+      }
+
+      function pickNum(obj, keys) {
+        if (!obj) return null;
+        for (let i = 0; i < keys.length; i++) {
+          const v = obj[keys[i]];
+          if (v !== null && v !== undefined && v !== "" && isFinite(Number(v))) return Number(v);
+        }
+        return null;
+      }
+
+      function normalize(data) {
+        data = data || {};
+        return {
+          uv: pickNum(data, ["uv", "total_uv", "totalUv"]),
+          termUv: pickNum(data, ["termUv", "term_uv", "thisTermUv", "this_term_uv"]),
+          todayUv: pickNum(data, ["todayUv", "today_uv"]),
+          pv: pickNum(data, ["pv", "total_pv", "totalPv"]),
+          completes: pickNum(data, ["completes", "success", "successes"]),
+          avgAttempts: pickNum(data, ["avg_attempts", "avgAttempts"]),
+          caliber: data.caliber || "",
+          updatedAt: data.updatedAt || data.updated_at || null,
+        };
+      }
+
+      const DEFAULT_CALIBER = "累计=上线以来去重设备数；本学期=当前学期去重设备数；今日=统计服务器当日去重设备数。";
+
+      function caliberText(stats, cachedAt) {
+        const s = stats || normalize({});
+        const lines = [
+          "【项目运行数据说明卡】",
+          "项目：中国空间站交会对接小游戏（第4章 相对运动 · CW 近程交会）",
+          "页面：" + (canReport ? (location.origin + location.pathname) : "本地文件（离线）"),
+          "累计使用人数（UV）：" + fmtNum(s.uv),
+          "本学期使用人数：" + fmtNum(s.termUv),
+          "今日使用人数：" + fmtNum(s.todayUv),
+          "累计访问（PV）：" + fmtNum(s.pv),
+          "完成对接人次：" + fmtNum(s.completes),
+          "平均尝试次数：" + fmtAvg(s.avgAttempts),
+          "统计口径：" + (s.caliber || DEFAULT_CALIBER),
+          "去重规则：同一设备随机 ID 去重，不采集姓名、学号、手机号与 IP 明文。",
+          "数据来源：服务端 /api/stats 权威值，原始事件日志可导出 CSV 审计。",
+          "数据更新时间：" + fmtTime(s.updatedAt) + (cachedAt ? "（缓存于 " + fmtTime(cachedAt) + "）" : ""),
+          "渠道标记：" + source,
+        ];
+        return lines.join("\n");
+      }
+
+      function setText(id, text) {
+        const node = document.getElementById(id);
+        if (node) node.textContent = text;
+      }
+
+      function renderOffline(reason) {
+        const badge = document.getElementById("statsBadge");
+        if (badge) badge.classList.add("isOffline");
+        const stateEl = document.getElementById("statState");
+        if (stateEl) { stateEl.hidden = false; stateEl.textContent = "离线模式"; }
+        setText("cardUV", "—");
+        setText("cardTerm", "—");
+        setText("cardToday", "—");
+        setText("cardCompletes", "—");
+        setText("cardAvg", "—");
+        setText("cardPv", "—");
+        setText("cardCaliber", DEFAULT_CALIBER);
+        setText("cardState", reason || "未连接数据服务，不显示数字");
+        setText("cardUpdated", "未连接数据服务");
+        lastStats = null;
+      }
+
+      function renderStats(raw, cachedAt) {
+        const s = normalize(raw);
+        const badge = document.getElementById("statsBadge");
+        if (badge) badge.classList.remove("isOffline");
+        const stateEl = document.getElementById("statState");
+        if (stateEl) { stateEl.hidden = true; stateEl.textContent = ""; }
+
+        setText("statUV", fmtNum(s.uv));
+        setText("statTerm", fmtNum(s.termUv));
+        setText("statToday", fmtNum(s.todayUv));
+        setText("cardUV", fmtNum(s.uv));
+        setText("cardTerm", fmtNum(s.termUv));
+        setText("cardToday", fmtNum(s.todayUv));
+        setText("cardCompletes", fmtNum(s.completes));
+        setText("cardAvg", fmtAvg(s.avgAttempts));
+        setText("cardPv", fmtNum(s.pv));
+        setText("cardCaliber", s.caliber || DEFAULT_CALIBER);
+        setText("cardState", cachedAt
+          ? "显示缓存值（" + fmtTime(cachedAt) + "），当前未连接数据服务"
+          : "已连接 · 服务端权威值");
+        setText("cardUpdated", "更新于 " + fmtTime(s.updatedAt || cachedAt || Date.now()));
+        lastStats = s;
+      }
+
+      function refreshStats() {
+        if (statsInFlight) return;
+        if (!canReport) { renderOffline("本地打开（file://），不显示统计数字"); return; }
+        let cached = null;
+        try { cached = JSON.parse(store.get(KEYS.statsCache, "null")); } catch (e) { cached = null; }
+
+        statsInFlight = true;
+        const ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+        const timer = ctrl ? setTimeout(function () { ctrl.abort(); }, CONFIG.statsTimeoutMs) : null;
+        fetch(api("/api/stats?scope=global&days=30"), {
+          signal: ctrl ? ctrl.signal : undefined,
+          headers: { accept: "application/json" },
+          cache: "no-store",
+        }).then(function (res) {
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          return res.json();
+        }).then(function (data) {
+          renderStats(data, null);
+          try {
+            store.set(KEYS.statsCache, JSON.stringify({ data: data, at: Date.now() }));
+          } catch (e) {}
+        }).catch(function () {
+          if (cached && cached.data) renderStats(cached.data, cached.at || Date.now());
+          else renderOffline("未连接数据服务（/api/stats 不可用），不显示数字");
+        }).then(function () {
+          statsInFlight = false;
+          if (timer) clearTimeout(timer);
+        });
+      }
+
+      async function copyText(text) {
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch (e) {}
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          ta.style.top = "0";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          ta.setSelectionRange(0, ta.value.length);
+          const ok = document.execCommand("copy");
+          ta.remove();
+          return ok;
+        } catch (e) { return false; }
+      }
+
+      function bindPanel() {
+        const dock = document.getElementById("statsDock");
+        const badge = document.getElementById("statsBadge");
+        const card = document.getElementById("statsCard");
+        const copyBtn = document.getElementById("statsCopy");
+        if (!dock || !badge || !card) return;
+
+        let pinned = false;
+        let hoverTimer = null;
+
+        const setOpen = function (open) {
+          card.hidden = !open;
+          badge.setAttribute("aria-expanded", open ? "true" : "false");
+          if (open && !panelOpened) {
+            panelOpened = true;
+            track("panel_open", {});
+          }
+        };
+
+        badge.addEventListener("click", function (e) {
+          e.stopPropagation();
+          if (card.hidden) { pinned = true; setOpen(true); }
+          else { pinned = false; setOpen(false); }
+        });
+
+        const openHover = function () {
+          clearTimeout(hoverTimer);
+          if (card.hidden) setOpen(true);
+        };
+        const closeHover = function () {
+          clearTimeout(hoverTimer);
+          if (pinned) return;
+          hoverTimer = setTimeout(function () { setOpen(false); }, 420);
+        };
+        // 胶囊与卡片都在 dock 内：mouseenter 不冒泡，需分别绑定
+        [dock, badge, card].forEach(function (node) {
+          node.addEventListener("mouseenter", openHover);
+          node.addEventListener("mouseleave", closeHover);
+        });
+
+        card.addEventListener("click", function (e) { e.stopPropagation(); });
+        document.addEventListener("click", function () {
+          if (!pinned && !card.hidden) setOpen(false);
+        });
+
+        if (copyBtn) {
+          copyBtn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            const cached = !lastStats ? (function () {
+              try { return JSON.parse(store.get(KEYS.statsCache, "null")); } catch (err) { return null; }
+            })() : null;
+            const stats = lastStats || (cached && cached.data) || null;
+            const cachedAt = lastStats ? null : (cached && cached.at);
+            copyText(caliberText(stats, cachedAt)).then(function (ok) {
+              track("caliber_copy", { ok: !!ok });
+              const prev = copyBtn.textContent;
+              copyBtn.textContent = ok ? "已复制" : "复制失败，请手动截图";
+              setTimeout(function () { copyBtn.textContent = prev; }, 1600);
+            });
+          });
+        }
+      }
+
+      function init() {
+        bindPanel();
+        refreshStats();
+        if (statsTimer) clearInterval(statsTimer);
+        statsTimer = setInterval(function () {
+          if (document.visibilityState === "visible") refreshStats();
+        }, CONFIG.statsRefreshMs);
+
+        track("page_view", {
+          path: location.pathname + location.search,
+        });
+      }
+
+      // 页面关闭前尽量把队列发完
+      window.addEventListener("pagehide", function () { flush(true); });
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "hidden") flush(true);
+      });
+
+      const apiObj = {
+        config: CONFIG,
+        visitorId: visitorId,
+        sessionId: sessionId,
+        track: track,
+        trackParam: trackParam,
+        runStarted: runStarted,
+        runFinished: runFinished,
+        onRunFinished: onRunFinished,
+        attempts: attempts,
+        refreshStats: refreshStats,
+        flush: flush,
+        init: init,
+      };
+      window.TIANGONG = apiObj;
+      return apiObj;
+    })();
+
+    function getCWPosition(t, x0, y0, vx0, vy0) {
+      const n = state.n;
+      const nt = n * t;
+      const cos = Math.cos(nt);
+      const sin = Math.sin(nt);
+
+      const x = (4*x0 + 2*vy0/n) - (3*x0 + 2*vy0/n)*cos + (vx0/n)*sin;
+      const y = (y0 - 2*vx0/n) - (6*n*x0 + 3*vy0)*t + (6*x0 + 4*vy0/n)*sin + (2*vx0/n)*cos;
+      return { x, y };
+    }
+
+    function getCWVelocity(t, x0, y0, vx0, vy0) {
+      // HCW/CW 解析速度（对 x(t), y(t) 求导）
+      const n = state.n;
+      const nt = n * t;
+      const cos = Math.cos(nt);
+      const sin = Math.sin(nt);
+
+      // xdot = (3x0 + 2vy0/n)*n*sin(nt) + vx0*cos(nt)
+      const vx = (3*x0 + 2*vy0/n) * n * sin + vx0 * cos;
+
+      // ydot = -(6n x0 + 3vy0) + (6n x0 + 4vy0)*cos(nt) - 2vx0*sin(nt)
+      const vy = -(6*n*x0 + 3*vy0) + (6*n*x0 + 4*vy0) * cos - 2*vx0 * sin;
+
+      return { vx, vy };
+    }
+
+    // ===== v26 · AI 助教（需求二）=====
+    // 硬约束（方案 §2.2）：数值一律不由模型产出。
+    //   1) 模型只能“调用工具取数”，工具函数在浏览器端本地执行；
+    //   2) 所有轨道量来自 CW 解析解 + 0.01 网格搜索 + 逐倍速按真实帧长采样校验；
+    //   3) 无网络/无密钥时自动降级为规则模式，教学提示与数值仍完整可用。
+    const AI_TUTOR = (function () {
+      // ---------------- 常量 ----------------
+      const API_CHAT = "/api/ai/chat";
+      const API_HEALTH = "/api/ai/health";
+      const CHAT_TIMEOUT = 45000;
+      const MAX_ROUNDS = 4;        // 一次提问最多几个模型回合
+      const MAX_TOOL_CALLS = 8;    // 一次提问最多几次工具调用
+      const SPEEDS = [1, 2, 4, 8];
+      const T_LIMIT = 2400;        // s，仿真上限（最省燃料解要 1400 s 以上才入框）
+      const SAMPLE_DT = 1;         // s，连续量采样步长
+      const ROUND_FRAME = 1 / 60;  // s，每帧真实时间
+      const VX_MIN = 0.05, VX_MAX = 0.20;
+      const VY_MIN = -0.20, VY_MAX = -0.02;
+      const TOP_N = 32;            // 粗筛后进入精细评估的数量
+
+      const TOOL_LABEL = {
+        get_student_state: "读取学生状态",
+        evaluate_params: "求解器评估参数",
+        solve_docking: "求解器搜索可行解"
+      };
+
+      // ---------------- 运行时状态 ----------------
+      let refs = null;
+      let sampleTab = null;
+      let solveCache = Object.create(null);
+      let thinkTurnEl = null;
+
+      const st = {
+        mode: "rule",          // rule | ai
+        busy: false,
+        opened: false,
+        autoOpened: false,
+        adopted: 0,
+        lastOutcome: "none",
+        pendingPredict: null,  // 采纳参数后的预测，用于与实测对照
+        history: [],           // 只存纯文本轮次，避免跨轮 tool_call_id 失配
+        lastRec: null,
+        lastRecObj: "robust",
+        turnNo: 0,
+        toolCount: 0
+      };
+
+      // ---------------- 基础工具 ----------------
+      function now() {
+        return (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+      }
+      function r1(v) { return Math.round((Number(v) || 0) * 10) / 10; }
+      function r2(v) { return Math.round((Number(v) || 0) * 100) / 100; }
+      // 量化到 0.01：滑块显示就是两位小数，避免“推荐 0.203 / 界面 0.20”的错位
+      function q2(v) {
+        const x = Number(v) * 100;
+        return Math.round(x + (x >= 0 ? 1e-9 : -1e-9)) / 100;
+      }
+      function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+      // 飞船当前位置（已点火过才有意义）；多次脉冲时 AI 从这里接续引导
+      function midCourse() {
+        if (!state.run) return null;
+        return currentRunPos();
+      }
+
+      // 机动起点解析：模型可显式传 origin；否则取「当前可继续机动的位置」，
+      // 再否则取初始位置。中途求解默认从中途位置接续，这是多次脉冲玩法的关键。
+      function resolveOrg(args) {
+        const o = args && args.origin;
+        if (o && isFinite(Number(o.x)) && isFinite(Number(o.y))) {
+          return { x: q2(Number(o.x)), y: q2(Number(o.y)) };
+        }
+        const mid = midCourse();
+        if (mid && canContinueBurn()) {
+          return { x: q2(mid.x), y: q2(mid.y) };
+        }
+        return null;   // null = 初始位置
+      }
+
+      // 场景参数。org 为机动起点（世界坐标 m）；省略时取页面初始位置 (0, 200)。
+      // 支持任意起点是「多次脉冲」的关键：CW 方程自治，每段只依赖该段初值。
+      function scene(org) {
+        const init = computeInitialState();
+        const x0 = org ? Number(org.x) : init.x0;
+        const y0 = org ? Number(org.y) : init.y0;
+        return {
+          n: state.n,
+          x0: x0,
+          y0: y0,
+          rw: state.targetBox.w / 2,   // 对接框沿航向半宽 50 m
+          rh: state.targetBox.h / 2,   // 对接框径向半高 20 m
+          bx: state.world.h / 2,       // 径向边界 |x| <= 300
+          by: state.world.w / 2,       // 沿航向边界 |y| <= 400
+          base: state.baseTimeScale
+        };
+      }
+
+      function isInitialOrg(org) {
+        if (!org) return true;
+        const init = computeInitialState();
+        return Math.abs(Number(org.x) - init.x0) < 1e-6 && Math.abs(Number(org.y) - init.y0) < 1e-6;
+      }
+
+      // ---------------- CW 解析解（与画面同一套公式） ----------------
+      function coef(vx0, vy0, org) {
+        const s = scene(org);
+        const n = s.n, x0 = s.x0, y0 = s.y0;
+        return {
+          n: n,
+          A: 4 * x0 + 2 * vy0 / n,
+          B: 3 * x0 + 2 * vy0 / n,
+          C: vx0 / n,
+          D: y0 - 2 * vx0 / n,
+          E: 6 * n * x0 + 3 * vy0,
+          F: 6 * x0 + 4 * vy0 / n,
+          G: 2 * vx0 / n,
+          rw: s.rw, rh: s.rh, bx: s.bx, by: s.by, base: s.base,
+          x0: x0, y0: y0
+        };
+      }
+      function posAt(c, t) {
+        const nt = c.n * t;
+        const cs = Math.cos(nt), sn = Math.sin(nt);
+        return { x: c.A - c.B * cs + c.C * sn, y: c.D - c.E * t + c.F * sn + c.G * cs };
+      }
+      function distAt(c, t) {
+        const p = posAt(c, t);
+        return Math.sqrt(p.x * p.x + p.y * p.y);
+      }
+      // 矩形对接框判定（与画面 insideTargetBox 同一口径）
+      function inBoxAt(c, t) {
+        const p = posAt(c, t);
+        return Math.abs(p.x) <= c.rh && Math.abs(p.y) <= c.rw;
+      }
+
+      function table() {
+        if (sampleTab) return sampleTab;
+        const s = scene();
+        const N = Math.round(T_LIMIT / SAMPLE_DT);
+        const t = new Float64Array(N + 1);
+        const cs = new Float64Array(N + 1);
+        const sn = new Float64Array(N + 1);
+        for (let k = 0; k <= N; k++) {
+          const tt = k * SAMPLE_DT;
+          const nt = s.n * tt;
+          t[k] = tt;
+          cs[k] = Math.cos(nt);
+          sn[k] = Math.sin(nt);
+        }
+        sampleTab = { t: t, cs: cs, sn: sn, n: N };
+        return sampleTab;
+      }
+
+      // 三分法在局部区间内精化极小点
+      function refine(c, lo, hi) {
+        if (hi - lo < 1e-6) return { t: lo, d: distAt(c, lo) };
+        let a = lo, b = hi;
+        for (let i = 0; i < 28; i++) {
+          const m1 = a + (b - a) / 3;
+          const m2 = b - (b - a) / 3;
+          if (distAt(c, m1) < distAt(c, m2)) b = m2; else a = m1;
+        }
+        const t = (a + b) / 2;
+        return { t: t, d: distAt(c, t) };
+      }
+
+      // 二分求精「框内区间」的左右边界（矩形框；轨迹连续，单步内穿越单调）
+      function edgeLeft(c, tIn) {
+        let inside = tIn;
+        let outside = Math.max(0, tIn - SAMPLE_DT);
+        let guard = 0;
+        while (guard++ < 4000) {
+          if (outside <= 0) {
+            if (inBoxAt(c, 0)) return 0;
+            break;
+          }
+          if (!inBoxAt(c, outside)) break;
+          inside = outside;
+          outside = Math.max(0, outside - SAMPLE_DT);
+        }
+        let a = outside, b = inside;
+        for (let i = 0; i < 40; i++) {
+          const m = (a + b) / 2;
+          if (inBoxAt(c, m)) b = m; else a = m;
+        }
+        return b;
+      }
+
+      function edgeRight(c, tIn) {
+        let inside = tIn;
+        let outside = Math.min(T_LIMIT, tIn + SAMPLE_DT);
+        let guard = 0;
+        while (guard++ < 4000) {
+          if (outside >= T_LIMIT) {
+            if (inBoxAt(c, T_LIMIT)) return T_LIMIT;
+            break;
+          }
+          if (!inBoxAt(c, outside)) break;
+          inside = outside;
+          outside = Math.min(T_LIMIT, outside + SAMPLE_DT);
+        }
+        let a = inside, b = outside;
+        for (let i = 0; i < 40; i++) {
+          const m = (a + b) / 2;
+          if (inBoxAt(c, m)) a = m; else b = m;
+        }
+        return a;
+      }
+
+      // 连续量测量：粗采样找窗口 + 局部极小精化（防止“擦边掠过”被粗采样漏掉）
+      function measure(c) {
+        const tb = table();
+        const near = 3 * c.rw;          // 接近判据的尺度（沿航向半宽的 3 倍）
+        let best = Infinity, bestT = 0;
+        let boundT = -1, boundAxis = "";
+        let inFirst = -1;
+        const cands = [];
+        let tm2 = -1, dm2 = Infinity, tm1 = -1, dm1 = Infinity;
+
+        for (let k = 0; k <= tb.n; k++) {
+          const cs = tb.cs[k], sn = tb.sn[k], tt = tb.t[k];
+          const x = c.A - c.B * cs + c.C * sn;
+          const y = c.D - c.E * tt + c.F * sn + c.G * cs;
+          const d = Math.sqrt(x * x + y * y);
+          if (d < best) { best = d; bestT = tt; }
+          if (boundT < 0 && (Math.abs(y) > c.by || Math.abs(x) > c.bx)) {
+            boundT = tt;
+            boundAxis = Math.abs(y) > c.by ? "y" : "x";
+          }
+          if (inFirst < 0 && Math.abs(x) <= c.rh && Math.abs(y) <= c.rw) inFirst = tt;
+          if (tm1 >= 0 && dm1 < dm2 && dm1 <= d && dm1 < near) cands.push(tm1);
+          tm2 = tm1; dm2 = dm1; tm1 = tt; dm1 = d;
+        }
+
+        // 精化：候选局部极小 + 全局最小点邻域
+        const pts = cands.slice(0);
+        if (best < near) pts.push(bestT);
+        const dips = [];
+        for (let i = 0; i < pts.length; i++) {
+          let dup = false;
+          for (let j = 0; j < dips.length; j++) {
+            if (Math.abs(dips[j].t - pts[i]) < 0.75) { dup = true; break; }
+          }
+          if (dup) continue;
+          dips.push(refine(c, Math.max(0, pts[i] - SAMPLE_DT), Math.min(T_LIMIT, pts[i] + SAMPLE_DT)));
+        }
+
+        let minD = best, minT = bestT;
+        for (let i = 0; i < dips.length; i++) {
+          if (dips[i].d < minD) { minD = dips[i].d; minT = dips[i].t; }
+        }
+
+        let entry = -1, exit = -1, dwell = 0;
+        if (inFirst >= 0) {
+          entry = edgeLeft(c, inFirst);
+          exit = edgeRight(c, inFirst);
+          dwell = Math.max(0, exit - entry);
+        }
+
+        return {
+          minD: minD, minT: minT,
+          entry: entry, exit: exit, dwell: dwell,
+          boundT: boundT, boundAxis: boundAxis
+        };
+      }
+
+      // 逐倍速按真实帧长采样（严格复刻 tick 的顺序：先累加时间→算位置→先判成功再判越界）
+      function simulate(c, mult) {
+        const frame = ROUND_FRAME * c.base * mult;
+        const maxF = Math.ceil(T_LIMIT / frame) + 2;
+        const p0 = posAt(c, 0);
+        let lastT = 0, lastD = Math.sqrt(p0.x * p0.x + p0.y * p0.y);
+        for (let f = 1; f <= maxF; f++) {
+          const t = f * frame;
+          if (t > T_LIMIT + 1e-9) break;
+          const p = posAt(c, t);
+          const d = Math.sqrt(p.x * p.x + p.y * p.y);
+          lastT = t; lastD = d;
+          if (Math.abs(p.x) <= c.rh && Math.abs(p.y) <= c.rw) {
+            return { docks: true, t: t, d: d, reason: "docked" };
+          }
+          if (Math.abs(p.y) > c.by || Math.abs(p.x) > c.bx) {
+            return { docks: false, t: t, d: d, reason: "out_of_boundary", axis: Math.abs(p.y) > c.by ? "y" : "x" };
+          }
+        }
+        return { docks: false, t: lastT, d: lastD, reason: "timeout", axis: "" };
+      }
+
+      function evaluate(vx0, vy0, org) {
+        const qx = q2(vx0), qy = q2(vy0);
+        const c = coef(qx, qy, org);
+        const m = measure(c);
+        const sims = {};
+        const frameSkip = [];
+        let allOk = true, frameEntry = Infinity;
+
+        for (let i = 0; i < SPEEDS.length; i++) {
+          const sp = SPEEDS[i];
+          const r = simulate(c, sp);
+          sims["x" + sp] = {
+            docks: r.docks,
+            frame_t_s: r1(r.t),
+            frame_distance_m: r2(r.d),
+            reason: r.reason
+          };
+          if (!r.docks) {
+            allOk = false;
+            if (m.entry >= 0) frameSkip.push(sp);
+          } else if (r.t < frameEntry) {
+            frameEntry = r.t;
+          }
+        }
+
+        const entry = m.entry >= 0 ? m.entry : (isFinite(frameEntry) ? frameEntry : -1);
+        const dwell = m.entry >= 0 ? m.dwell : 0;
+
+        return {
+          vx0: qx, vy0: qy,
+          org: { x: r2(c.x0), y: r2(c.y0) },
+          impulse: Math.sqrt(qx * qx + qy * qy),
+          minD: m.minD, minT: m.minT,
+          entry: entry, exit: m.exit, dwell: dwell,
+          boundT: m.boundT, boundAxis: m.boundAxis,
+          enters: m.entry >= 0,
+          allOk: allOk,
+          frameSkip: frameSkip,
+          sims: sims
+        };
+      }
+
+      // ---------------- 评分与搜索 ----------------
+      function score(ev, objective) {
+        const s = scene(ev.org);
+        const sc = Math.max(s.rw, s.rh);   // 距离尺度：对接框半宽
+        if (!ev.allOk) return -1e6 + (sc - Math.min(ev.minD, 2 * sc)) * 20;
+        if (objective === "fast") return 1e6 - ev.entry;
+        if (objective === "fuel") {
+          const strict = ev.minD <= 0.85 * sc && ev.dwell >= 8 && ev.entry <= 1400;
+          return (strict ? 1e6 : 5e5) - ev.impulse * 200;
+        }
+        // robust：最近距离小、框内停留长、入框别太晚
+        return 1e6 + (sc - ev.minD) * 40 + Math.min(ev.dwell, 240) * 0.6 - Math.max(0, ev.entry - 1100) * 0.2;
+      }
+
+      // 搜索网格：初始位置沿用教学用的窄区间（只有“倒着飞”这一类解）；
+      // 中途续跳放开到滑块全量程，因为此时需要的可能是小幅度修正。
+      function gridRange(org) {
+        if (isInitialOrg(org)) {
+          return {
+            a0: Math.round(VX_MIN * 100), a1: Math.round(VX_MAX * 100),
+            b0: Math.round(VY_MIN * 100), b1: Math.round(VY_MAX * 100)
+          };
+        }
+        return { a0: -20, a1: 20, b0: -20, b1: 20 };
+      }
+
+      function solve(objective, org) {
+        const obj = (objective === "fast" || objective === "fuel") ? objective : "robust";
+        const key = obj + "@" + (org ? (r2(org.x) + "," + r2(org.y)) : "init");
+        if (solveCache[key]) return solveCache[key];
+
+        const t0 = now();
+        const s = scene(org);
+        const pool = [];
+        let scanned = 0, enters = 0;
+
+        // 0.01 m/s 全网格（与滑块显示精度一致），整数分位索引避免浮点累积
+        const rg = gridRange(org);
+
+        for (let a = rg.a0; a <= rg.a1; a++) {
+          const vx = a / 100;
+          for (let b = rg.b0; b <= rg.b1; b++) {
+            const vy = b / 100;
+            scanned++;
+            const m = measure(coef(vx, vy, org));
+            if (m.entry < 0) continue;
+            enters++;
+            if (m.boundT >= 0 && m.entry > m.boundT) continue;
+            const proxy = (s.rw - Math.min(m.minD, s.rw)) * 2
+              + Math.min(m.dwell, 160) * 0.05
+              - Math.max(0, m.entry - 900) * 0.01
+              + (m.dwell >= 12 ? 8 : 0);
+            pool.push({ vx0: vx, vy0: vy, proxy: proxy });
+          }
+        }
+
+        pool.sort(function (p, q) { return q.proxy - p.proxy; });
+        const shortList = pool.slice(0, TOP_N);
+        const opts = [];
+        for (let i = 0; i < shortList.length; i++) {
+          const ev = evaluate(shortList[i].vx0, shortList[i].vy0, org);
+          if (!ev.allOk) continue;
+          ev.score = score(ev, obj);
+          ev.__objective = obj;
+          opts.push(ev);
+        }
+        opts.sort(function (p, q) { return q.score - p.score; });
+
+        const list = opts.slice(0, 3);
+        const t1 = now();
+        const res = {
+          objective: obj,
+          ok: list.length > 0,
+          options: list,
+          scanned: scanned,
+          enters: enters,
+          evaluated: shortList.length,
+          step: 0.01,
+          from: { x: r2(s.x0), y: r2(s.y0) },
+          elapsed_ms: Math.round(t1 - t0)
+        };
+        for (let i = 0; i < list.length; i++) {
+          list[i].__meta = { scanned: scanned, enters: enters, elapsed_ms: res.elapsed_ms, step: 0.01 };
+        }
+        solveCache[key] = res;
+        return res;
+      }
+
+      // ---------------- 工具输出（snake_case，供模型直接引用） ----------------
+      function fmtEv(ev) {
+        const sims = {};
+        for (let i = 0; i < SPEEDS.length; i++) {
+          const k = "x" + SPEEDS[i];
+          sims[k] = ev.sims[k];
+        }
+        const s = scene(ev.org);
+        return {
+          vx0: ev.vx0,
+          vy0: ev.vy0,
+          from_x_m: r2(s.x0),
+          from_y_m: r2(s.y0),
+          impulse_m_s: r2(ev.impulse),
+          all_speeds_ok: ev.allOk,
+          frame_skip_speeds: ev.frameSkip,
+          min_distance_m: r2(ev.minD),
+          min_distance_t_s: r1(ev.minT),
+          entry_t_s: ev.entry < 0 ? null : r1(ev.entry),
+          exit_t_s: ev.exit < 0 ? null : r1(ev.exit),
+          dwell_in_box_s: r1(ev.dwell),
+          boundary_t_s: ev.boundT < 0 ? null : r1(ev.boundT),
+          boundary_axis: ev.boundAxis || null,
+          by_speed: sims,
+          note: "本对象由浏览器端确定性求解器计算，请直接引用，不要自行修改或推测"
+        };
+      }
+
+      function toolState() {
+        const s = scene();
+        const mid = midCourse();
+        return {
+          current_vx0: q2(state.uiVx0),
+          current_vy0: q2(state.uiVy0),
+          speed_mult: state.speedMult,
+          frame_step_s: r2(ROUND_FRAME * state.baseTimeScale * state.speedMult),
+          attempts: TIANGONG.attempts(),
+          adopted: st.adopted,
+          last_outcome: st.lastOutcome,
+          running: !!state.active,
+          paused: !!state.paused,
+          burns: state.burns || 0,
+          mid_course: mid ? {
+            x_m: r2(mid.x), y_m: r2(mid.y), distance_m: r2(Math.hypot(mid.x, mid.y)),
+            can_burn_again: !!canContinueBurn()
+          } : null,
+          docking_box_m: { w: state.targetBox.w, h: state.targetBox.h },
+          boundary_m: { x: s.bx, y: s.by },
+          time_limit_s: T_LIMIT
+        };
+      }
+
+      function execTool(name, args) {
+        const t0 = now();
+        let out, rec = null, evOut = null;
+
+        if (name === "get_student_state") {
+          out = toolState();
+        } else if (name === "evaluate_params") {
+          const vx = Number(args && args.vx0);
+          const vy = Number(args && args.vy0);
+          if (!isFinite(vx) || !isFinite(vy)) {
+            out = { error: "invalid_params", hint: "vx0 / vy0 必须是数字；未知时先用 get_student_state 取当前值" };
+          } else {
+            evOut = evaluate(vx, vy, resolveOrg(args));
+            out = fmtEv(evOut);
+          }
+        } else if (name === "solve_docking") {
+          const res = solve(args && args.objective, resolveOrg(args));
+          out = {
+            objective: res.objective,
+            found: res.ok,
+            from_x_m: res.from.x,
+            from_y_m: res.from.y,
+            options: res.options.map(fmtEv),
+            scanned_grid_points: res.scanned,
+            feasible_count: res.enters,
+            grid_step: res.step,
+            elapsed_ms: res.elapsed_ms,
+            note: "全部由浏览器端求解器计算；请直接引用最优解，不要自行修改数值"
+          };
+          if (res.ok) rec = res.options[0];
+        } else {
+          out = { error: "unknown_tool", tool: name };
+        }
+
+        const ms = Math.round(now() - t0);
+        addThinkStep(name, args, out, ms);
+        try { TIANGONG.track("ai_tool", { tool: name, ms: ms, ok: !(out && out.error) }); } catch (e) {}
+        return { out: out, rec: rec, ev: evOut };
+      }
+
+      // ---------------- 思考面板（只记录真实发生的工具调用） ----------------
+      function beginThink(label) {
+        if (!refs) return;
+        const empty = refs.thinkBody.querySelector(".thinkEmpty");
+        if (empty) empty.parentNode.removeChild(empty);
+        thinkTurnEl = document.createElement("div");
+        thinkTurnEl.className = "thinkTurn";
+        const th = document.createElement("div");
+        th.className = "th";
+        th.textContent = (label || ("第 " + st.turnNo + " 次提问")) + " · " + new Date().toLocaleTimeString("zh-CN", { hour12: false });
+        thinkTurnEl.appendChild(th);
+        refs.thinkBody.appendChild(thinkTurnEl);
+        refs.thinkMeta.textContent = "进行中…";
+        scrollThink();
+      }
+
+      function finishThink(note) {
+        if (!refs || !thinkTurnEl) return;
+        const end = document.createElement("div");
+        end.className = "thinkEnd";
+        end.textContent = "本轮结束 · " + note;
+        thinkTurnEl.appendChild(end);
+        refs.thinkMeta.textContent = note;
+        thinkTurnEl = null;
+        scrollThink();
+      }
+
+      function kvRows(name, args, out) {
+        const rows = [];
+        if (name === "get_student_state") {
+          rows.push(["当前参数", out.current_vx0 + " / " + out.current_vy0 + " m/s"]);
+          rows.push(["尝试次数", String(out.attempts)]);
+          rows.push(["上次结果", out.last_outcome]);
+          if (out.mid_course) {
+            rows.push(["当前位置", out.mid_course.x_m + " / " + out.mid_course.y_m + " m（距离 " + out.mid_course.distance_m + " m）"]);
+            rows.push(["已机动", String(out.burns) + " 次" + (out.mid_course.can_burn_again ? " · 可继续" : " · 需重置")]);
+          }
+        } else if (name === "evaluate_params") {
+          if (out && out.error) { rows.push(["错误", out.error]); return rows; }
+          rows.push(["起点", out.from_x_m + " / " + out.from_y_m + " m"]);
+          rows.push(["入参", out.vx0 + " / " + out.vy0 + " m/s"]);
+          rows.push(["最近距离", out.min_distance_m + " m @" + out.min_distance_t_s + " s"]);
+          rows.push(["入框时刻", out.entry_t_s == null ? "未入框" : out.entry_t_s + " s"]);
+          rows.push(["框内停留", out.dwell_in_box_s + " s"]);
+          rows.push(["四倍速", out.all_speeds_ok ? "全部入框" : "有失败"]);
+        } else if (name === "solve_docking") {
+          rows.push(["目标", out.objective]);
+          rows.push(["起点", out.from_x_m + " / " + out.from_y_m + " m"]);
+          rows.push(["扫描", out.scanned_grid_points + " 点 · 步长 " + out.grid_step]);
+          rows.push(["可行解", out.found ? ("是（" + out.options.length + " 个）") : "否"]);
+          if (out.options && out.options[0]) {
+            const o = out.options[0];
+            rows.push(["最优", o.vx0 + " / " + o.vy0 + " m/s"]);
+            rows.push(["入框", o.entry_t_s + " s · 最近 " + o.min_distance_m + " m"]);
+          }
+          rows.push(["耗时", out.elapsed_ms + " ms"]);
+        }
+        return rows;
+      }
+
+      function addThinkStep(name, args, out, ms) {
+        if (!refs || !thinkTurnEl) return;
+        const wrap = document.createElement("div");
+        wrap.className = "thinkStep";
+
+        const head = document.createElement("div");
+        head.className = "st";
+        head.textContent = (TOOL_LABEL[name] || name) + " ";
+        const code = document.createElement("i");
+        code.textContent = name + "() · " + ms + " ms";
+        head.appendChild(code);
+        wrap.appendChild(head);
+
+        const ul = document.createElement("ul");
+        ul.className = "thinkKv";
+        const rows = kvRows(name, args, out);
+        for (let i = 0; i < rows.length; i++) {
+          const li = document.createElement("li");
+          const em = document.createElement("em");
+          em.textContent = rows[i][0] + "：";
+          const b = document.createElement("b");
+          b.textContent = String(rows[i][1]);
+          li.appendChild(em);
+          li.appendChild(b);
+          ul.appendChild(li);
+        }
+        wrap.appendChild(ul);
+        thinkTurnEl.appendChild(wrap);
+        refs.thinkMeta.textContent = "工具调用 " + st.toolCount + " 次";
+        scrollThink();
+      }
+
+      function scrollThink() {
+        if (!refs || !refs.thinkBody) return;
+        refs.thinkBody.scrollTop = refs.thinkBody.scrollHeight;
+      }
+      function scrollLog() {
+        if (!refs || !refs.body) return;
+        refs.body.scrollTop = refs.body.scrollHeight;
+      }
+
+      // ---------------- 消息与推荐卡 ----------------
+      const WHO = { user: "学生", ai: "AI 助教", note: "求解器实测", err: "系统提示" };
+
+      function pushMsg(role, text) {
+        if (!refs) return null;
+        const box = document.createElement("div");
+        box.className = "aiMsg " + role;
+        const who = document.createElement("div");
+        who.className = "who";
+        who.textContent = WHO[role] || role;
+        const bub = document.createElement("div");
+        bub.className = "bubble";
+        bub.textContent = String(text == null ? "" : text);
+        box.appendChild(who);
+        box.appendChild(bub);
+        refs.log.appendChild(box);
+        scrollLog();
+        return box;
+      }
+
+      function addRow(tb, k, v, cls) {
+        const tr = document.createElement("tr");
+        if (cls) tr.className = cls;
+        const td1 = document.createElement("td");
+        td1.textContent = k;
+        const td2 = document.createElement("td");
+        td2.textContent = v;
+        tr.appendChild(td1);
+        tr.appendChild(td2);
+        tb.appendChild(tr);
+      }
+
+      function pushRec(ev, objective) {
+        if (!refs || !ev) return;
+        const card = document.createElement("div");
+        card.className = "recCard";
+
+        const head = document.createElement("header");
+        head.textContent = objective === "fast" ? "最快入框解"
+          : objective === "fuel" ? "最省燃料解" : "最稳入框解";
+        const tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = ev.allOk ? "四倍速全通过" : "存在倍速失败";
+        head.appendChild(tag);
+        card.appendChild(head);
+
+        const tb = document.createElement("table");
+        tb.className = "recTable";
+        addRow(tb, "vx0", ev.vx0.toFixed(2) + " m/s", "");
+        addRow(tb, "vy0", ev.vy0.toFixed(2) + " m/s", "");
+        addRow(tb, "入框时刻", ev.entry < 0 ? "—" : r1(ev.entry) + " s", "best");
+        addRow(tb, "最近距离", r2(ev.minD) + " m @" + r1(ev.minT) + " s", "best");
+        addRow(tb, "框内停留", r1(ev.dwell) + " s", "");
+        addRow(tb, "越界时刻", ev.boundT < 0 ? "不越界" : r1(ev.boundT) + " s", "");
+        for (let i = 0; i < SPEEDS.length; i++) {
+          const sp = SPEEDS[i];
+          const s = ev.sims["x" + sp];
+          addRow(tb, sp + " 倍速",
+            s.docks ? ("入框 " + r1(s.frame_t_s) + " s") : ("失败 " + r1(s.frame_t_s) + " s · " + r2(s.frame_distance_m) + " m"),
+            "");
+        }
+        card.appendChild(tb);
+
+        const btns = document.createElement("div");
+        btns.className = "recRowBtns";
+        const bAdopt = document.createElement("button");
+        bAdopt.type = "button";
+        bAdopt.className = "recAdopt";
+        bAdopt.textContent = "采纳参数";
+        const bRun = document.createElement("button");
+        bRun.type = "button";
+        bRun.className = "recRun";
+        bRun.textContent = "采纳并运行";
+        bAdopt.addEventListener("click", function () { adopt(ev, false); });
+        bRun.addEventListener("click", function () { adopt(ev, true); });
+        btns.appendChild(bAdopt);
+        btns.appendChild(bRun);
+        card.appendChild(btns);
+
+        const note = document.createElement("div");
+        note.className = "recNote";
+        const meta = ev.__meta;
+        note.textContent = "已量化到 0.01（与滑块显示一致）"
+          + (meta ? "；0.01 网格扫描 " + meta.scanned + " 点，耗时 " + meta.elapsed_ms + " ms" : "")
+          + "。数值由浏览器端求解器计算，模型不参与。";
+        card.appendChild(note);
+
+        refs.log.appendChild(card);
+        scrollLog();
+      }
+
+      function adopt(ev, autoRun) {
+        if (!refs || !ev) return;
+        const vx = clamp(q2(ev.vx0), -0.2, 0.2);
+        const vy = clamp(q2(ev.vy0), -0.2, 0.2);
+        el.vx.value = String(vx);
+        el.vy.value = String(vy);
+        syncFromSliders();
+
+        st.adopted += 1;
+        // 预测从「下一发脉冲实际的施加点」算起：中途续跳时是当前位置
+        const org = resolveOrg(null);
+        const ev2 = evaluate(vx, vy, org);
+        st.pendingPredict = { vx0: vx, vy0: vy, entry: ev2.entry, minD: ev2.minD, dwell: ev2.dwell, org: org };
+
+        try { TIANGONG.trackParam(vx, vy, "ai_adopt"); } catch (e) {}
+        try {
+          TIANGONG.track("ai_adopt", {
+            vx0: vx, vy0: vy, auto_run: !!autoRun,
+            predicted_entry_s: ev2.entry < 0 ? null : r1(ev2.entry),
+            predicted_min_d_m: r2(ev2.minD)
+          });
+        } catch (e) {}
+
+        const tail = ev2.entry >= 0
+          ? "求解器预测约 " + r1(ev2.entry) + " s 进入对接框（最近 " + r2(ev2.minD) + " m）。"
+          : "求解器预测不会进入对接框。";
+        if (state.active) {
+          pushMsg("note", "已写入滑块：vx0 = " + vx.toFixed(2) + "、vy0 = " + vy.toFixed(2) + " m/s。" + tail + "当前正在运行，新参数将在下一次机动生效。");
+          return;
+        }
+        pushMsg("note", "已写入滑块：vx0 = " + vx.toFixed(2) + "、vy0 = " + vy.toFixed(2) + " m/s。" + tail + "实际结果以运行为准。");
+        if (autoRun) setTimeout(function () { try { startSim(); } catch (e) {} }, 140);
+      }
+
+      // ---------------- 与网关通信 ----------------
+      function ctxSnapshot() {
+        let oc = st.lastOutcome;
+        const mid = midCourse();
+        const snap = {
+          vx0: q2(state.uiVx0),
+          vy0: q2(state.uiVy0),
+          attempts: TIANGONG.attempts(),
+          adopted: st.adopted,
+          last_outcome: oc,
+          running: !!state.active,
+          paused: !!state.paused,
+          burns: state.burns || 0,
+          mid_course: null
+        };
+        if (mid) {
+          snap.mid_course = {
+            x_m: r2(mid.x), y_m: r2(mid.y),
+            distance_m: r2(Math.hypot(mid.x, mid.y)),
+            can_burn_again: !!canContinueBurn()
+          };
+        }
+        return snap;
+      }
+
+      function errText(err) {
+        if (!err) return "unknown";
+        if (err.status === 503) return "服务端未配置模型密钥";
+        if (err.status === 429) return "请求过于频繁";
+        if (err.status === 502) return "上游模型服务异常";
+        if (err.name === "AbortError") return "请求超时";
+        return err.status ? ("HTTP " + err.status) : (err.message || "网络不可用");
+      }
+
+      function postChat(messages) {
+        const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+        const timer = ctrl ? setTimeout(function () { ctrl.abort(); }, CHAT_TIMEOUT) : null;
+        return fetch(API_CHAT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            visitor_id: TIANGONG.visitorId || "anon_local_01",
+            messages: messages,
+            context: ctxSnapshot()
+          }),
+          signal: ctrl ? ctrl.signal : undefined
+        }).then(function (resp) {
+          return resp.json().catch(function () { return {}; }).then(function (data) {
+            if (!resp.ok) {
+              const e = new Error((data && (data.error || data.reason)) || ("http_" + resp.status));
+              e.status = resp.status;
+              e.payload = data;
+              throw e;
+            }
+            return data;
+          });
+        }).then(function (data) {
+          if (timer) clearTimeout(timer);
+          return data;
+        }, function (e) {
+          if (timer) clearTimeout(timer);
+          throw e;
+        });
+      }
+
+      function refreshHealth() {
+        return fetch(API_HEALTH, { cache: "no-store" })
+          .then(function (resp) {
+            if (!resp.ok) throw new Error("http_" + resp.status);
+            return resp.json();
+          })
+          .then(function (data) {
+            const on = !!(data && data.available);
+            setMode(on ? "ai" : "rule");
+            if (refs) {
+              refs.mode.title = on
+                ? "模型：" + data.model + " · 工具：" + (data.tools || []).join("、")
+                : "未配置模型密钥 · 规则兜底（对话走本地规则，数值仍由浏览器端求解器实算）";
+            }
+          })
+          .catch(function () { setMode("rule"); });
+      }
+
+      function setMode(m) {
+        st.mode = m === "ai" ? "ai" : "rule";
+        if (!refs) return;
+        refs.mode.classList.toggle("online", st.mode === "ai");
+        refs.modeText.textContent = st.mode === "ai" ? "AI 在线" : "规则模式";
+      }
+
+      // ---------------- tool-calling 闭环 ----------------
+      function runToolLoop(text) {
+        const msgs = [];
+        for (let i = 0; i < st.history.length; i++) {
+          msgs.push({ role: st.history[i].role, content: st.history[i].content });
+        }
+        msgs.push({ role: "user", content: text });
+
+        let round = 0, answer = "";
+        function step() {
+          if (round >= MAX_ROUNDS) return Promise.resolve(answer);
+          round += 1;
+          return postChat(msgs).then(function (data) {
+            const msg = (data && data.message) || {};
+            const content = String(msg.content || "");
+            const calls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
+            if (!calls.length) { answer = content; return answer; }
+            if (st.toolCount >= MAX_TOOL_CALLS) { answer = content; return answer; }
+
+            msgs.push({ role: "assistant", content: content, tool_calls: calls });
+            for (let i = 0; i < calls.length; i++) {
+              const call = calls[i] || {};
+              const fn = call.function || {};
+              const name = String(fn.name || "");
+              let args = {};
+              if (st.toolCount >= MAX_TOOL_CALLS) {
+                msgs.push({
+                  role: "tool",
+                  tool_call_id: String(call.id || ""),
+                  content: JSON.stringify({ error: "tool_budget_exhausted" })
+                });
+                continue;
+              }
+              st.toolCount += 1;
+              try { args = JSON.parse(fn.arguments || "{}"); } catch (e) { args = {}; }
+              let res;
+              try {
+                res = execTool(name, args);
+              } catch (e) {
+                res = { out: { error: "solver_failed", message: String((e && e.message) || e) }, rec: null };
+                addThinkStep(name, args, res.out, 0);
+              }
+              if (res.rec) {
+                st.lastRec = res.rec;
+                st.lastRecObj = res.rec.__objective || "robust";
+              }
+              msgs.push({
+                role: "tool",
+                tool_call_id: String(call.id || ""),
+                content: JSON.stringify(res.out)
+              });
+            }
+            return step();
+          });
+        }
+        return step().then(function (ans) {
+          return String(ans || "").trim();
+        });
+      }
+
+      function chatLoop(text) {
+        st.busy = true;
+        setBusy(true);
+        st.turnNo += 1;
+        st.toolCount = 0;
+        st.lastRec = null;
+        st.lastRecObj = "robust";
+
+        pushMsg("user", text);
+        beginThink();
+        try { TIANGONG.track("ai_chat", { mode: st.mode, turn: st.turnNo, q_len: text.length }); } catch (e) {}
+
+        if (st.mode !== "ai") {
+          return sleep(160).then(function () {
+            ruleAnswer(text);
+          }).then(function () {
+            finishThink("规则模式 · 未调用模型，数值来自本地求解器");
+            st.busy = false;
+            setBusy(false);
+          });
+        }
+
+        return runToolLoop(text).then(function (answer) {
+          if (!answer) throw new Error("empty_answer");
+          pushMsg("ai", answer);
+          if (st.lastRec) pushRec(st.lastRec, st.lastRecObj);
+          st.history.push({ role: "user", content: text });
+          st.history.push({ role: "assistant", content: answer.slice(0, 1200) });
+          if (st.history.length > 12) st.history.splice(0, st.history.length - 12);
+        }).catch(function (err) {
+          const status = err && err.status;
+          pushMsg("err", "AI 网关不可用（" + errText(err) + "），本轮改用规则模式：教学提示与数值仍由本地求解器给出。");
+          try { TIANGONG.track("ai_error", { status: status || 0, code: errText(err) }); } catch (e) {}
+          if (!status || status === 503 || status === 404) setMode("rule");
+          ruleAnswer(text);
+        }).then(function () {
+          finishThink(st.toolCount > 0
+            ? ("工具调用 " + st.toolCount + " 次 · 模型在线")
+            : (st.mode === "ai" ? "模型直接作答 · 未调用工具" : "规则模式 · 未调用模型，数值来自本地求解器"));
+          st.busy = false;
+          setBusy(false);
+        });
+      }
+
+      function setBusy(b) {
+        if (!refs) return;
+        if (refs.send) refs.send.disabled = !!b;
+        if (refs.input) {
+          refs.input.disabled = !!b;
+          refs.input.placeholder = b ? "求解器计算中…" : "例如：为什么 8 倍速会失败？";
+        }
+      }
+
+      // ---------------- 规则兜底（无网络也能用，数值仍来自求解器） ----------------
+      function reasonCn(r) {
+        if (r === "out_of_boundary") return "越界";
+        if (r === "timeout") return "超时";
+        if (r === "docked") return "入框";
+        return r || "未知";
+      }
+
+      function speedLines(ev) {
+        let txt = "";
+        for (let i = 0; i < SPEEDS.length; i++) {
+          const sp = SPEEDS[i];
+          const s = ev.sims["x" + sp];
+          txt += "\n· " + sp + " 倍速：" + (s.docks
+            ? ("入框 " + r1(s.frame_t_s) + " s")
+            : ("失败（" + reasonCn(s.reason) + " " + r1(s.frame_t_s) + " s，该帧距目标 " + r2(s.frame_distance_m) + " m）"));
+        }
+        return txt;
+      }
+
+      function ruleAnswer(q) {
+        const text = String(q || "");
+        const vx = q2(state.uiVx0), vy = q2(state.uiVy0);
+
+        if (/推荐|一组|参数|怎么调|帮我选|给个|下一|继续|接着/.test(text)) {
+          const r = execTool("solve_docking", { objective: "robust" });
+          if (!r.rec) {
+            pushMsg("err", "求解器在当前起点的 0.01 网格内没有找到 1/2/4/8 倍速全部入框的解。可以先暂停，问「为什么总飞出去」看看当前轨迹怎么越界的。");
+            return;
+          }
+          const best = r.rec;
+          st.lastRec = best;
+          st.lastRecObj = "robust";
+          // 以“是否已点火且可继续机动”判定起点性质：位置可能离 (0,200) 很近，但只要打过一发就是中途接续
+          const fromMid = !!(state.run && canContinueBurn());
+          const fromTxt = fromMid
+            ? ("我从你当前的位置 (" + r.out.from_x_m + ", " + r.out.from_y_m + ") m 接续搜索：")
+            : ("我从初始位置 (" + r.out.from_x_m + ", " + r.out.from_y_m + ") m 搜索：");
+          pushMsg("ai", fromTxt + "扫了 " + r.out.scanned_grid_points + " 组 0.01 精度的初速度，其中 " + r.out.feasible_count
+            + " 组能进入对接框。最稳的一组是 vx0 = " + best.vx0.toFixed(2) + "、vy0 = " + best.vy0.toFixed(2)
+            + " m/s：最近距离 " + r2(best.minD) + " m（" + r1(best.minT) + " s），约 " + r1(best.entry)
+            + " s 入框，框内停留 " + r1(best.dwell) + " s，四个倍速都能通过。这些数字来自求解器，不是我估的。");
+          pushRec(best, "robust");
+          return;
+        }
+
+        if (/倍速|帧|速度不一样|换倍速|8\s*倍|四倍/.test(text)) {
+          const evR = execTool("evaluate_params", { vx0: vx, vy0: vy });
+          if (!evR.ev) { pushMsg("err", "求解器未能识别当前参数。"); return; }
+          const ev = evR.ev;
+          const frame = ROUND_FRAME * state.baseTimeScale;
+          let txt = "画面不是连续积分，而是每帧用 CW 解析解算一次位置：1 倍速每帧推进 " + r2(frame)
+            + " s，8 倍速每帧推进 " + r2(frame * 8) + " s。倍速越高，两帧之间跨过的距离越长，越容易“跳过”对接框。\n\n"
+            + "当前参数（" + vx.toFixed(2) + " / " + vy.toFixed(2) + "）的连续解：最近 " + r2(ev.minD) + " m，"
+            + (ev.entry >= 0 ? ("约 " + r1(ev.entry) + " s 入框，框内停留 " + r1(ev.dwell) + " s。") : "始终没有进入对接框。")
+            + "\n按真实帧长逐倍速采样：";
+          txt += speedLines(ev);
+          if (ev.frameSkip.length) {
+            txt += "\n\n其中 " + ev.frameSkip.join("、") + " 倍速的连续轨迹能入框，但采样点整段跳过了窗口——这就是“同样参数、换倍速结果不同”的原因。";
+          }
+          pushMsg("ai", txt);
+          return;
+        }
+
+        if (/飞出去|出界|边界|失败|不进|总是|为什么/.test(text)) {
+          const evR = execTool("evaluate_params", { vx0: vx, vy0: vy });
+          if (!evR.ev) { pushMsg("err", "求解器未能识别当前参数。"); return; }
+          const ev = evR.ev;
+          const sc = scene(ev.org);
+          // 沿航向线性漂移率：dy/dt ≈ −(6n·x0 + 3vy0)，x0 = 0 时退化为 −3vy0
+          const rate = 6 * sc.n * sc.x0 + 3 * vy;
+          let txt = "当前参数（" + vx.toFixed(2) + " / " + vy.toFixed(2) + "），从 (" + r2(sc.x0) + ", " + r2(sc.y0) + ") m 出发：";
+          if (ev.boundT >= 0) {
+            txt += "连续轨迹在 " + r1(ev.boundT) + " s 越过 " + (ev.boundAxis === "y" ? "沿航向 400 m" : "径向 300 m") + " 边界，"
+              + (ev.entry >= 0 ? ("而最早入框要到 " + r1(ev.entry) + " s。") : ("全程最近只到 " + r2(ev.minD) + " m，从未进入对接框。"));
+          } else if (ev.entry >= 0) {
+            txt += "连续轨迹其实能入框（" + r1(ev.entry) + " s，最近 " + r2(ev.minD) + " m），但在采样帧上会被跳过：" + speedLines(ev);
+          } else {
+            txt += "连续轨迹在 " + T_LIMIT + " s 内最近只到 " + r2(ev.minD) + " m，没有越界，也没有入框。";
+          }
+          if (Math.abs(rate) > 1e-6) {
+            txt += "\n\n直观理解：沿航向近似 y(t) ≈ y0 " + (rate >= 0 ? "+" : "−") + " " + r2(Math.abs(rate))
+              + "·t + 周期项。当前参数让飞船以约 " + r2(Math.abs(rate)) + " m/s 漂离，从 " + r2(sc.y0) + " m 漂到 "
+              + r2(sc.by) + " m 只需约 " + r1(Math.abs((sc.by - sc.y0) / rate)) + " s。想让飞船留在框内，得先把这段漂移压小。";
+          }
+          pushMsg("ai", txt);
+          return;
+        }
+
+        if (/vx0|vy0|控制|含义|区别|什么意思|是什么/i.test(text)) {
+          pushMsg("ai", "vx0 是径向（指向/背离空间站方向）初速度，主要决定轨迹的横向摆动幅度；vy0 是沿航向初速度，它同时还决定了沿航向的线性漂移率（x0 ≠ 0 时还叠加 6n·x0 项）。\n\n"
+            + "在 CW 解析解里，沿航向近似为 y(t) ≈ y0 − (6n·x0 + 3vy0)·t + 周期项，所以 vy0 绝对值越大漂移越快、越容易先撞 400 m 边界；而 vx0 太小，轨迹会一直贴着对接框外侧绕，进不去。\n\n"
+            + "当前值：vx0 = " + vx.toFixed(2) + "、vy0 = " + vy.toFixed(2) + " m/s。想直接看结论就问「推荐一组参数」。");
+          return;
+        }
+
+        showDiagnosis();
+      }
+
+      function showDiagnosis() {
+        const vx = q2(state.uiVx0), vy = q2(state.uiVy0);
+        const ownTurn = !thinkTurnEl;
+        if (ownTurn) beginThink("自动诊断");
+        const evR = execTool("evaluate_params", { vx0: vx, vy0: vy });
+        const org = evR.ev ? evR.ev.org : resolveOrg(null);
+        const ev = evR.ev || evaluate(vx, vy, org);
+        const s = scene(org);
+        const boxTxt = state.targetBox.w + " m × " + state.targetBox.h + " m 对接框";
+        // 同 ruleAnswer：以是否已点火判定“中途接续”，不看位置距离
+        const fromMid = !!(state.run && canContinueBurn());
+        const fromTxt = fromMid ? ("（从当前位置 (" + r2(s.x0) + ", " + r2(s.y0) + ") m 接续）") : "";
+        let body;
+        if (ev.entry < 0) {
+          body = "连续轨迹最近只到 " + r2(ev.minD) + " m，没有进入 " + boxTxt + "，"
+            + (ev.boundT >= 0 ? ("并在 " + r1(ev.boundT) + " s 越过 " + (ev.boundAxis === "y" ? "沿航向 400 m" : "径向 300 m") + " 边界。") : ("在 " + T_LIMIT + " s 内始终没有入框。"))
+            + "原因是这一发脉冲给的方向让轨迹一直在目标外侧绕。";
+        } else if (ev.boundT >= 0 && ev.entry > ev.boundT) {
+          body = "轨迹会穿过对接框，但第一次入框在 " + r1(ev.entry) + " s，晚于 " + r1(ev.boundT) + " s 的越界时刻。";
+        } else {
+          const bad = [];
+          for (let i = 0; i < SPEEDS.length; i++) {
+            const sp = SPEEDS[i];
+            if (!ev.sims["x" + sp].docks) bad.push(sp + " 倍速");
+          }
+          body = "连续轨迹在 " + r1(ev.entry) + " s 入框、框内停留 " + r1(ev.dwell) + " s；但 " + bad.join("、")
+            + " 按真实帧长采样时，相邻两帧之间直接跳过了对接框窗口。";
+        }
+        pushMsg("note", "我用求解器复算了当前参数（vx0 = " + vx.toFixed(2) + "、vy0 = " + vy.toFixed(2) + "）" + fromTxt + "：" + body);
+
+        const r = execTool("solve_docking", { objective: "robust" });
+        if (r.rec) {
+          pushMsg("ai", "下面这组参数在 1/2/4/8 倍速下都能入框，可以采纳后自己对比：");
+          pushRec(r.rec, "robust");
+        }
+        if (ownTurn) finishThink("自动诊断完成 · 求解器实算 " + r.out.scanned_grid_points + " 组候选");
+      }
+
+      // ---------------- 运行结果钩子 ----------------
+      function onFinished(outcome, info, attempt) {
+        st.lastOutcome = outcome === "success" ? "success" : (outcome === "abort" ? "abort" : "fail");
+
+        const p = st.pendingPredict;
+        if (p && state.run && q2(state.run.vx0) === p.vx0 && q2(state.run.vy0) === p.vy0) {
+          st.pendingPredict = null;
+          const actual = Number(info && info.simTime);
+          const hasXY = info && isFinite(info.x) && isFinite(info.y);
+          const dist = hasXY ? Math.sqrt(info.x * info.x + info.y * info.y) : null;
+          if (outcome === "success") {
+            let tail = "";
+            if (p.entry >= 0 && isFinite(actual)) {
+              const diff = r1(actual - p.entry);
+              tail = "（预测 " + r1(p.entry) + " s，偏差 " + (diff >= 0 ? "+" : "") + diff + " s）";
+            }
+            pushMsg("note", "采纳参数后的实测：入框 " + r1(actual) + " s" + tail
+              + "，该帧距目标中心 " + (dist == null ? "—" : r2(dist)) + " m。");
+          } else if (outcome === "fail") {
+            pushMsg("note", "采纳参数后的实测：在 " + r1(actual) + " s 超出测控边界。连续解预测入框 "
+              + (p.entry >= 0 ? (r1(p.entry) + " s") : "未入框")
+              + "，说明当前倍速的帧步长让采样点跳过了对接框窗口。");
+          }
+        }
+
+        // 第 2 次失败后主动弹出诊断
+        if (outcome === "fail" && attempt >= 2 && !st.autoOpened) {
+          st.autoOpened = true;
+          openPanel("auto_fail");
+          setTimeout(function () { showDiagnosis(); }, 300);
+        }
+      }
+
+      // ---------------- 面板 ----------------
+      function openPanel(trigger) {
+        if (!refs) return;
+        st.opened = true;
+        document.body.classList.add("ai-open");
+        refs.tab.setAttribute("aria-expanded", "true");
+        refs.drawer.setAttribute("aria-hidden", "false");
+        try { TIANGONG.track("ai_panel_open", { trigger: trigger || "manual" }); } catch (e) {}
+        setTimeout(function () {
+          if (refs && refs.input) { try { refs.input.focus(); } catch (e) {} }
+        }, 280);
+      }
+
+      function closePanel() {
+        if (!refs) return;
+        st.opened = false;
+        document.body.classList.remove("ai-open");
+        refs.tab.setAttribute("aria-expanded", "false");
+        refs.drawer.setAttribute("aria-hidden", "true");
+      }
+
+      function autoGrow() {
+        if (!refs || !refs.input) return;
+        const ta = refs.input;
+        ta.style.height = "auto";
+        ta.style.height = Math.min(96, Math.max(42, ta.scrollHeight)) + "px";
+      }
+
+      function sendCurrent() {
+        if (!refs || st.busy) return;
+        const text = String(refs.input.value || "").trim();
+        if (!text) return;
+        refs.input.value = "";
+        autoGrow();
+        chatLoop(text);
+      }
+
+      // ---------------- 初始化 ----------------
+      function init() {
+        refs = {
+          tab: document.getElementById("aiTab"),
+          drawer: document.getElementById("aiDrawer"),
+          close: document.getElementById("aiClose"),
+          mode: document.getElementById("aiMode"),
+          modeText: document.getElementById("aiModeText"),
+          body: document.getElementById("aiBody"),
+          log: document.getElementById("aiLog"),
+          quick: document.getElementById("aiQuick"),
+          think: document.getElementById("aiThink"),
+          thinkBody: document.getElementById("aiThinkBody"),
+          thinkMeta: document.getElementById("aiThinkMeta"),
+          form: document.getElementById("aiForm"),
+          input: document.getElementById("aiInput"),
+          send: document.getElementById("aiSend")
+        };
+        if (!refs.drawer || !refs.log || !refs.tab) return;
+
+        refs.tab.addEventListener("click", function () {
+          if (st.opened) closePanel(); else openPanel("tab");
+        });
+        if (refs.close) refs.close.addEventListener("click", closePanel);
+        document.addEventListener("keydown", function (ev) {
+          if (ev.key === "Escape" && st.opened) closePanel();
+        });
+
+        if (refs.form) {
+          refs.form.addEventListener("submit", function (ev) {
+            ev.preventDefault();
+            sendCurrent();
+          });
+        }
+        if (refs.input) {
+          refs.input.addEventListener("keydown", function (ev) {
+            if (ev.key === "Enter" && !ev.shiftKey) {
+              ev.preventDefault();
+              sendCurrent();
+            }
+          });
+          refs.input.addEventListener("input", autoGrow);
+        }
+
+        if (refs.quick) {
+          const chips = refs.quick.querySelectorAll("[data-q]");
+          for (let i = 0; i < chips.length; i++) {
+            chips[i].addEventListener("click", function () {
+              if (st.busy || !refs.input) return;
+              refs.input.value = this.getAttribute("data-q") || "";
+              autoGrow();
+              sendCurrent();
+            });
+          }
+        }
+
+        TIANGONG.onRunFinished(onFinished);
+        setMode("rule");
+
+        pushMsg("ai", "我是这门课的 AI 助教。轨道参数全部由浏览器里的确定性求解器计算（CW 解析解 + 0.01 网格 + 逐倍速采样校验），我只负责诊断和解释。可以直接问我「为什么总飞出去」或「推荐一组参数」。");
+        refreshHealth();
+      }
+
+      return {
+        init: init,
+        open: openPanel,
+        close: closePanel,
+        solve: solve,
+        evaluate: evaluate
+      };
+    })();
+
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    const viewport = document.querySelector(".viewport");
+
+
+    // 允许拖动 HUD（状态/相对速度显示框）到任意位置
+    const hud = document.getElementById("hud");
+    (function enableHudDrag(){
+      if (!hud) return;
+      let dragging = false;
+      let startX = 0, startY = 0;
+      let startLeft = 0, startTop = 0;
+      let hudW = 0, hudH = 0;
+      const clampNum = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+      hud.addEventListener('pointerdown', (e) => {
+        // 仅响应鼠标左键/主指针
+        if (typeof e.button === 'number' && e.button !== 0) return;
+        dragging = true;
+        hud.classList.add('dragging');
+        try { hud.setPointerCapture(e.pointerId); } catch(_){ }
+
+        const vpRect = viewport.getBoundingClientRect();
+        const rect = hud.getBoundingClientRect();
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = rect.left - vpRect.left;
+        startTop  = rect.top  - vpRect.top;
+        hudW = rect.width;
+        hudH = rect.height;
+        e.preventDefault();
+      });
+
+      hud.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const vpRect = viewport.getBoundingClientRect();
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        let left = startLeft + dx;
+        let top  = startTop  + dy;
+        left = clampNum(left, 0, Math.max(0, vpRect.width  - hudW));
+        top  = clampNum(top,  0, Math.max(0, vpRect.height - hudH));
+        hud.style.left = left + 'px';
+        hud.style.top  = top  + 'px';
+        hud.style.right = 'auto';
+        hud.style.bottom = 'auto';
+      });
+
+      const end = (e) => {
+        if (!dragging) return;
+        dragging = false;
+        hud.classList.remove('dragging');
+        try { hud.releasePointerCapture(e.pointerId); } catch(_){ }
+      };
+      hud.addEventListener('pointerup', end);
+      hud.addEventListener('pointercancel', end);
+    })();
+
+    function resizeCanvas() {
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      const w = viewport.clientWidth;
+      const h = viewport.clientHeight;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      state.stars = [];
+      const starCount = Math.floor((w*h) / 18000);
+      for (let i=0; i<starCount; i++) {
+        state.stars.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          r: 0.4 + Math.random() * 1.2,
+          a: 0.25 + Math.random() * 0.75,
+        });
+      }
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    function loadImageWithFallback(primarySrc, fallbackDataUrl) {
+      const img = new Image();
+      img.decoding = "async";
+      img.src = primarySrc;
+      img.onerror = () => { img.src = fallbackDataUrl; };
+      return img;
+    }
+    const stationImg = loadImageWithFallback("./中国空间站交会对接小游戏_files/space_station.png", "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCAxMjAgNjAiPgo8ZGVmcz4KICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzdiZGZmMiIvPgogICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjYjJmN2VmIi8+CiAgPC9saW5lYXJHcmFkaWVudD4KPC9kZWZzPgo8cmVjdCB4PSIxMCIgeT0iMjAiIHdpZHRoPSIxMDAiIGhlaWdodD0iMjAiIHJ4PSI2IiBmaWxsPSJ1cmwoI2cpIiBvcGFjaXR5PSIwLjkiLz4KPHJlY3QgeD0iNTIiIHk9IjEwIiB3aWR0aD0iMTYiIGhlaWdodD0iNDAiIHJ4PSI0IiBmaWxsPSIjZmZmZmZmIiBvcGFjaXR5PSIwLjc1Ii8+CjxyZWN0IHg9IjAiIHk9IjI2IiB3aWR0aD0iMzAiIGhlaWdodD0iOCIgcng9IjIiIGZpbGw9IiM4ZTlhYWYiIG9wYWNpdHk9IjAuOCIvPgo8cmVjdCB4PSI5MCIgeT0iMjYiIHdpZHRoPSIzMCIgaGVpZ2h0PSI4IiByeD0iMiIgZmlsbD0iIzhlOWFhZiIgb3BhY2l0eT0iMC44Ii8+CjxjaXJjbGUgY3g9IjYwIiBjeT0iMzAiIHI9IjYiIGZpbGw9IiMzMzQxNWMiIG9wYWNpdHk9IjAuOSIvPgo8L3N2Zz4=");
+    const shipImg    = loadImageWithFallback("./中国空间站交会对接小游戏_files/spaceship.png", "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSIzMCIgdmlld0JveD0iMCAwIDUwIDMwIj4KPGRlZnM+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJoIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMCI+CiAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZmQxNjYiLz4KICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZjYTMxMSIvPgogIDwvbGluZWFyR3JhZGllbnQ+CjwvZGVmcz4KPHBhdGggZD0iTTYgMTUgTDE4IDYgTDQ0IDYgUTQ4IDYgNDggMTAgTDQ4IDIwIFE0OCAyNCA0NCAyNCBMMTggMjQgWiIgZmlsbD0idXJsKCNoKSIvPgo8cmVjdCB4PSIxOCIgeT0iMTAiIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIgcng9IjIiIGZpbGw9IiNmZmZmZmYiIG9wYWNpdHk9IjAuOCIvPgo8Y2lyY2xlIGN4PSIxMCIgY3k9IjE1IiByPSIzIiBmaWxsPSIjMmIyZDQyIiBvcGFjaXR5PSIwLjg1Ii8+Cjwvc3ZnPg==");
+
+    const el = {
+      vx: document.getElementById("vx"),
+      vy: document.getElementById("vy"),
+      vxVal: document.getElementById("vxVal"),
+      vyVal: document.getElementById("vyVal"),
+      startBtn: document.getElementById("startBtn"),
+      pauseBtn: document.getElementById("pauseBtn"),
+      resetBtn: document.getElementById("resetBtn"),
+      statusText: document.getElementById("statusText"),
+      statusDot: document.getElementById("statusDot"),
+      msgText: document.getElementById("msgText"),
+      teleX: document.getElementById("teleX"),
+      teleY: document.getElementById("teleY"),
+      teleDist: document.getElementById("teleDist"),
+      badge: document.getElementById("statusBadge"),
+      speed1Btn: document.getElementById("speed1Btn"),
+      speed2Btn: document.getElementById("speed2Btn"),
+      speed4Btn: document.getElementById("speed4Btn"),
+      speed8Btn: document.getElementById("speed8Btn"),
+      zoomOutBtn: document.getElementById("zoomOutBtn"),
+      zoomInBtn: document.getElementById("zoomInBtn"),
+      zoomAutoBtn: document.getElementById("zoomAutoBtn"),
+      zoomVal: document.getElementById("zoomVal")
+    };
+
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    function snapZero(v) {
+      // 修复 range 浮点/步进导致的“难以精确归零”问题：靠近 0 时吸附到 0
+      if (!isFinite(v)) return 0;
+      if (Math.abs(v) < 0.005) return 0;
+      return v;
+    }
+
+    function setStatus(status, message="") {
+      state.status = status;
+      state.message = message;
+      const map = {
+        "STANDBY": "STANDBY",
+        "RUNNING": "机动执行中",
+        "SUCCESS": "SUCCESS",
+        "FAIL": "FAIL",
+        "PAUSED": "PAUSED",
+        "ABORTED": "ABORTED",
+      };
+      el.statusText.textContent = map[status] || status;
+      el.msgText.textContent = message || "";
+
+      let color = "rgba(255,255,255,0.55)";
+      if (status === "RUNNING") color = "rgba(123,223,242,0.95)";
+      if (status === "SUCCESS") color = "rgba(90,220,140,0.95)";
+      if (status === "FAIL")    color = "rgba(255,90,90,0.95)";
+      if (status === "ABORTED") color = "rgba(255,209,102,0.95)";
+      if (status === "PAUSED")  color = "rgba(255,209,102,0.95)";
+      el.statusDot.style.background = color;
+      el.badge.style.borderColor = color.replace("0.95", "0.35");
+    }
+
+    function setLocked(locked) {
+      state.locked = locked;
+      el.vxVal.classList.toggle("locked", locked);
+      el.vyVal.classList.toggle("locked", locked);
+      refreshRunButtons();
+    }
+
+    function syncFromSliders() {
+      let vx = snapZero(parseFloat(el.vx.value));
+      let vy = snapZero(parseFloat(el.vy.value));
+      // 消除 -0 显示
+      if (Object.is(vx, -0)) vx = 0;
+      if (Object.is(vy, -0)) vy = 0;
+      state.uiVx0 = vx;
+      state.uiVy0 = vy;
+      if (vx === 0) el.vx.value = "0";
+      if (vy === 0) el.vy.value = "0";
+      el.vxVal.textContent = state.uiVx0.toFixed(2);
+      el.vyVal.textContent = state.uiVy0.toFixed(2);
+      if (state.locked) el.msgText.textContent = "参数已锁定：修改将在下一次机动生效";
+    }
+    const onSliderInput = () => {
+      syncFromSliders();
+      TIANGONG.trackParam(state.uiVx0, state.uiVy0, "slider");
+    };
+    el.vx.addEventListener("input", onSliderInput);
+    el.vy.addEventListener("input", onSliderInput);
+    // 键盘方向键 / 触控步进等场景，兜底监听 change，保证数值与 Δv 放大镜同步
+    el.vx.addEventListener("change", onSliderInput);
+    el.vy.addEventListener("change", onSliderInput);
+    syncFromSliders();
+
+    function beginInlineEdit(which) {
+      const target = which === "vx" ? el.vxVal : el.vyVal;
+      const current = which === "vx" ? state.uiVx0 : state.uiVy0;
+      if (target.querySelector("input")) return;
+
+      const input = document.createElement("input");
+      input.className = "numInput";
+      input.type = "number";
+      input.step = "0.01";
+      input.min = "-0.2";
+      input.max = "0.2";
+      input.value = String(current.toFixed(2));
+      input.title = "可输入 -0.20 ~ +0.20";
+
+      const prevText = target.textContent;
+      target.textContent = "";
+      target.appendChild(input);
+      input.focus();
+      input.select();
+
+      const commit = () => {
+        const raw = parseFloat(input.value);
+        // 非法输入按 0 处理，超出量程按 ±0.20 截断，保留 0.01 精度
+        let v = isFinite(raw) ? clamp(raw, -0.2, 0.2) : 0;
+        v = Math.round(v * 100) / 100;
+        v = snapZero(v);
+        if (Object.is(v, -0)) v = 0;
+        if (which === "vx") {
+          state.uiVx0 = v;
+          el.vx.value = String(v);
+          el.vxVal.textContent = v.toFixed(2);
+        } else {
+          state.uiVy0 = v;
+          el.vy.value = String(v);
+          el.vyVal.textContent = v.toFixed(2);
+        }
+        if (state.locked) el.msgText.textContent = "参数已锁定：修改将在下一次机动生效";
+        renderDvScope();   // 立即刷新 Δv 放大镜，不必等下一帧
+        TIANGONG.trackParam(state.uiVx0, state.uiVy0, "typed");
+      };
+
+      const cancel = () => { target.textContent = prevText; };
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") commit();
+        if (e.key === "Escape") cancel();
+      });
+      input.addEventListener("blur", () => commit());
+    }
+    // 点击数值即可直接输入（双击同样生效），便于精确设定 Δv 分量
+    el.vxVal.addEventListener("click", () => beginInlineEdit("vx"));
+    el.vyVal.addEventListener("click", () => beginInlineEdit("vy"));
+    function getView(w, h, pos) {
+      const m = state.margin;
+      const availW = Math.max(10, w - 2*m);
+      const availH = Math.max(10, h - 2*m);
+      const worldW = state.world.w;
+      const worldH = state.world.h;
+      // 以等比缩放把固定世界坐标系装入当前画布
+      const baseScale = Math.min(availW / worldW, availH / worldH);
+
+      // 视角自适应：飞船越靠近空间站（对接距离越小），视角越放大。
+      // 下限固定为 1（即原始比例），只放大不缩小，绝不越过原始“测控范围”。
+      const dist = pos ? Math.hypot(pos.x, pos.y) : 200;
+      state.zoomTarget = clamp(150 / Math.max(37.5, dist), 1, 4);
+
+      // 手动缩放：点 −/＋ 或滚轮后进入 manual，倍率锁定在用户设定值；
+      // 点“自适应”切回 auto，恢复随距离跟随。两种模式都做平滑过渡。
+      const targetZoom = state.zoomMode === "manual" ? state.userZoom : state.zoomTarget;
+      if (!isFinite(state.viewZoom)) state.viewZoom = targetZoom;
+      state.viewZoom += (targetZoom - state.viewZoom) * 0.12;
+      state.zoom = state.viewZoom;
+
+      const scale = baseScale * state.zoom;
+      const boxW = worldW * scale;
+      const boxH = worldH * scale;
+      const rect = { x: (w - boxW) / 2, y: (h - boxH) / 2, w: boxW, h: boxH };
+      const origin = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
+      return { w, h, scale, baseScale, rect, origin };
+    }
+    function mapToCanvas(x, y, view) {
+      // 约定：+x 向上（径向），+y 向左（横向）
+      return { drawX: view.origin.x - y * view.scale, drawY: view.origin.y - x * view.scale };
+    }
+    function computeInitialState() {
+      // 可控飞船初始位于 y 轴左侧 1/4 测控边界框宽度处（在世界坐标系中固定）
+      return { x0: 0, y0: state.world.w / 4 };
+    }
+
+    function resetSimVisual() {
+      state.simTime = 0;
+      state.path = [];
+    }
+
+    // 当前燃烧段（t0 之后）在 CW 解析解下的位置
+    function currentRunPos() {
+      if (!state.run) return null;
+      const t = state.simTime - (state.run.t0 || 0);
+      return getCWPosition(t, state.run.x0, state.run.y0, state.run.vx0, state.run.vy0);
+    }
+
+    // 是否可以从当前位置继续加脉冲：仍在测控边界内、且尚未入框
+    function canContinueBurn() {
+      if (!state.run) return false;
+      const p = currentRunPos();
+      if (!p) return false;
+      return insideSafetyWorld(p.x, p.y) && !insideTargetBox(p.x, p.y);
+    }
+
+    function refreshRunButtons() {
+      if (!el.startBtn) return;
+      el.startBtn.disabled = state.active;
+      el.pauseBtn.disabled = !state.run;
+      el.pauseBtn.textContent = state.active ? "暂停" : (state.paused ? "继续" : "暂停");
+      el.pauseBtn.classList.toggle("isPaused", !state.active && state.paused);
+      el.resetBtn.disabled = !state.run && state.simTime === 0 && state.path.length === 0;
+    }
+
+    function startSim() {
+      if (state.active) return;
+
+      const vx = state.uiVx0, vy = state.uiVy0;
+      let x0, y0, fresh;
+
+      if (canContinueBurn()) {
+        // 多次脉冲：从当前位置继续，轨迹保留（不清零、不跳回原点）
+        const p = currentRunPos();
+        x0 = p.x; y0 = p.y;
+        fresh = false;
+      } else {
+        // 首次机动，或上一次已飞出边界/已对接：回到初始位置重新开始
+        const init = computeInitialState();
+        x0 = init.x0; y0 = init.y0;
+        fresh = true;
+      }
+
+      if (fresh) {
+        state.run = { x0: x0, y0: y0, vx0: vx, vy0: vy, t0: 0 };
+        resetSimVisual();
+        state.burns = 0;
+      } else {
+        state.run = { x0: x0, y0: y0, vx0: vx, vy0: vy, t0: state.simTime };
+      }
+      state.burns += 1;
+      state.paused = false;
+      state.active = true;
+
+      const pos0 = getCWPosition(0, x0, y0, vx, vy);
+      state.path.push({ x: pos0.x, y: pos0.y });
+
+      setStatus("RUNNING", fresh
+        ? ("第 1 次脉冲：参数已锁定，运行中修改不生效")
+        : ("第 " + state.burns + " 次脉冲：从当前位置 (" + x0.toFixed(0) + ", " + y0.toFixed(0) + ") m 继续"));
+      setLocked(true);
+      TIANGONG.runStarted(state.run);
+      refreshRunButtons();
+    }
+
+    function togglePause() {
+      if (!state.run) return;
+      if (state.active) {
+        state.active = false;
+        state.paused = true;
+        setStatus("PAUSED", "已暂停：可改参数后再来一次脉冲，或点“继续”");
+        setLocked(false);
+      } else if (state.paused) {
+        state.active = true;
+        state.paused = false;
+        setStatus("RUNNING", "继续运行：从暂停位置接着积分");
+        setLocked(true);
+      }
+      refreshRunButtons();
+    }
+
+    function resetSim() {
+      const wasRunning = state.active || state.paused;
+      state.active = false;
+      state.paused = false;
+      state.run = null;
+      state.burns = 0;
+      resetSimVisual();
+      setStatus("STANDBY", "已重置：飞船回到初始位置，可重新开始");
+      setLocked(false);
+      if (wasRunning) {
+        TIANGONG.runFinished("abort", {
+          simTime: 0, x: null, y: null, reason: "user_reset",
+        });
+      }
+      refreshRunButtons();
+    }
+
+    el.startBtn.addEventListener("click", startSim);
+    el.pauseBtn.addEventListener("click", togglePause);
+    el.resetBtn.addEventListener("click", resetSim);
+    refreshRunButtons();
+
+    function refreshSpeedButtons() {
+      el.speed1Btn.classList.toggle("active", state.speedMult === 1);
+      el.speed2Btn.classList.toggle("active", state.speedMult === 2);
+      el.speed4Btn.classList.toggle("active", state.speedMult === 4);
+      el.speed8Btn.classList.toggle("active", state.speedMult === 8);
+    }
+    function setSpeedMult(mult) {
+      state.speedMult = mult;
+      refreshSpeedButtons();
+      if (state.active) {
+        el.msgText.textContent = `倍速已切换：${mult}x（运行中立即生效）`;
+      }
+    }
+    el.speed1Btn.addEventListener("click", () => setSpeedMult(1));
+    el.speed2Btn.addEventListener("click", () => setSpeedMult(2));
+    el.speed4Btn.addEventListener("click", () => setSpeedMult(4));
+    el.speed8Btn.addEventListener("click", () => setSpeedMult(8));
+    refreshSpeedButtons();
+
+    // ===== 手动缩放 =====
+    // 自适应仍按距离自动跟随；手动模式下把倍率固定住，方便讲解时锁定视角。
+    const ZOOM_MIN = 1, ZOOM_MAX = 6, ZOOM_STEP = 1.25;
+    function refreshZoomUI() {
+      const auto = state.zoomMode === "auto";
+      el.zoomAutoBtn.classList.toggle("active", auto);
+      el.zoomVal.classList.toggle("manual", !auto);
+      el.zoomVal.textContent = state.viewZoom.toFixed(2) + "×";
+      el.zoomOutBtn.disabled = !auto && state.userZoom <= ZOOM_MIN + 1e-6;
+      el.zoomInBtn.disabled = !auto && state.userZoom >= ZOOM_MAX - 1e-6;
+    }
+    function zoomBy(factor) {
+      // 从自适应切到手动时，以当前倍率为起点，避免第一下跳变
+      if (state.zoomMode !== "manual") {
+        state.zoomMode = "manual";
+        state.userZoom = clamp(state.viewZoom, ZOOM_MIN, ZOOM_MAX);
+      }
+      state.userZoom = clamp(state.userZoom * factor, ZOOM_MIN, ZOOM_MAX);
+      refreshZoomUI();
+    }
+    function setZoomAuto() {
+      state.zoomMode = "auto";
+      state.userZoom = 1;
+      refreshZoomUI();
+    }
+    el.zoomInBtn.addEventListener("click", () => zoomBy(ZOOM_STEP));
+    el.zoomOutBtn.addEventListener("click", () => zoomBy(1 / ZOOM_STEP));
+    el.zoomAutoBtn.addEventListener("click", setZoomAuto);
+    // 画面滚轮缩放：向上放大、向下缩小（自动切到手动模式）
+    canvas.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      zoomBy(e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP);
+    }, { passive: false });
+    refreshZoomUI();
+
+    function drawBackground(w, h) {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, "#05070f");
+      g.addColorStop(0.55, "#07102a");
+      g.addColorStop(1, "#02030a");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      for (const s of state.stars) {
+        ctx.globalAlpha = s.a;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawSafetyBox(view) {
+      // 红色测控边界框：直接按世界坐标（±400 横向 / ±300 径向）映射，
+      // 视角放大后仍然对应同一片遥测范围，不会被“放大”出画面内容之外。
+      const bw = state.world.w * view.scale;
+      const bh = state.world.h * view.scale;
+      ctx.save();
+      ctx.strokeStyle = "rgba(255, 90, 90, 0.9)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(view.origin.x - bw / 2, view.origin.y - bh / 2, bw, bh);
+      ctx.restore();
+    }
+    function drawTargetBox(origin, scale) {
+      const bw = state.targetBox.w * scale;   // 沿航向（屏幕横向）
+      const bh = state.targetBox.h * scale;   // 径向（屏幕纵向）
+      ctx.save();
+      ctx.strokeStyle = "rgba(90, 220, 140, 0.95)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(origin.x - bw / 2, origin.y - bh / 2, bw, bh);
+
+      // 四角短标，强调这是一个“横向更宽”的对接窗口
+      const c = Math.min(bw, bh) * 0.22;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(origin.x - bw / 2, origin.y - bh / 2 + c); ctx.lineTo(origin.x - bw / 2, origin.y - bh / 2); ctx.lineTo(origin.x - bw / 2 + c, origin.y - bh / 2);
+      ctx.moveTo(origin.x + bw / 2 - c, origin.y - bh / 2); ctx.lineTo(origin.x + bw / 2, origin.y - bh / 2); ctx.lineTo(origin.x + bw / 2, origin.y - bh / 2 + c);
+      ctx.moveTo(origin.x + bw / 2, origin.y + bh / 2 - c); ctx.lineTo(origin.x + bw / 2, origin.y + bh / 2); ctx.lineTo(origin.x + bw / 2 - c, origin.y + bh / 2);
+      ctx.moveTo(origin.x - bw / 2 + c, origin.y + bh / 2); ctx.lineTo(origin.x - bw / 2, origin.y + bh / 2); ctx.lineTo(origin.x - bw / 2, origin.y + bh / 2 - c);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(90, 220, 140, 0.85)";
+      ctx.font = "14px ui-sans-serif, system-ui";
+      ctx.fillText("对接判定框 " + state.targetBox.w + " m × " + state.targetBox.h + " m",
+        origin.x - bw / 2, origin.y + bh / 2 + 18);
+      ctx.restore();
+    }
+
+    function drawAxes(w, h, origin) {
+      // 坐标轴贴着画布边缘绘制：视角放大后世界框会超出画布，只能用画布边界当“屏幕坐标系”
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.25)";
+      ctx.lineWidth = 1.5;
+
+      ctx.beginPath();
+      ctx.moveTo(0, origin.y);
+      ctx.lineTo(w, origin.y);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(origin.x, 0);
+      ctx.lineTo(origin.x, h);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(255,255,255,0.35)";
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      ctx.moveTo(origin.x, 10);
+      ctx.lineTo(origin.x, 0);
+      ctx.lineTo(origin.x - 6, 8);
+      ctx.moveTo(origin.x, 0);
+      ctx.lineTo(origin.x + 6, 8);
+      ctx.stroke();
+
+      // +y 箭头：指向左侧（右 -> 左）
+      ctx.beginPath();
+      ctx.moveTo(10, origin.y);
+      ctx.lineTo(0, origin.y);
+      ctx.lineTo(8, origin.y - 6);
+      ctx.moveTo(0, origin.y);
+      ctx.lineTo(8, origin.y + 6);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(255,255,255,0.70)";
+      ctx.font = "14px ui-sans-serif, system-ui";
+      ctx.fillText("+x (径向)", origin.x + 10, 18);
+      ctx.fillText("+y (横向)", 10, origin.y - 12);
+
+      ctx.restore();
+    }
+    function drawPath(view) {
+      if (state.path.length < 2) return;
+      ctx.save();
+      ctx.strokeStyle = "rgba(255, 209, 102, 0.95)";
+      ctx.lineWidth = 2;
+      const p0 = mapToCanvas(state.path[0].x, state.path[0].y, view);
+      ctx.beginPath();
+      ctx.moveTo(p0.drawX, p0.drawY);
+      for (let i=1; i<state.path.length; i++) {
+        const p = mapToCanvas(state.path[i].x, state.path[i].y, view);
+        ctx.lineTo(p.drawX, p.drawY);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawStationAndShip(origin, shipDraw, scale) {
+      ctx.save();
+
+      // 目标：空间站高度 = 绿色对接框高度的 0.75（30 m），宽度按图像长宽比展开，
+      // 使其略小于绿框，飞船可沿横向真正抵近核心舱
+      const stationH = state.targetBox.h * 0.75 * scale;   // 屏幕纵向(px)
+      const imgW = Math.max(1, (stationImg.naturalWidth || stationImg.width || 120));
+      const imgH = Math.max(1, (stationImg.naturalHeight || stationImg.height || 60));
+      const ar = imgW / imgH;
+      const stationW = stationH * ar;
+
+      // 空间站（居中）
+      if (stationImg.complete) {
+        ctx.drawImage(stationImg, origin.x - stationW/2, origin.y - stationH/2, stationW, stationH);
+      } else {
+        // 占位：用同样的尺寸画一个圆角矩形
+        ctx.fillStyle = "rgba(255,255,255,0.16)";
+        ctx.strokeStyle = "rgba(255,255,255,0.35)";
+        ctx.lineWidth = 2;
+        const x = origin.x - stationW/2, y = origin.y - stationH/2, w = stationW, h = stationH;
+        const r = Math.min(14, w*0.2, h*0.45);
+        ctx.beginPath();
+        ctx.moveTo(x+r, y);
+        ctx.arcTo(x+w, y, x+w, y+h, r);
+        ctx.arcTo(x+w, y+h, x, y+h, r);
+        ctx.arcTo(x, y+h, x, y, r);
+        ctx.arcTo(x, y, x+w, y, r);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // 飞船
+      if (shipImg.complete) {
+        // 与空间站同一套比例：随视角缩放一起变大（上限放宽到 160px，
+        // 否则自适应放大到 2~4 倍时飞船会被锁死在 40px，看着不像在靠近）
+        const s = clamp(32 * scale, 18, 160);
+        ctx.drawImage(shipImg, shipDraw.drawX - s/2, shipDraw.drawY - s/2, s, s);
+      } else {
+        const r = clamp(10 * scale, 6, 48);
+        ctx.fillStyle = "rgba(123,223,242,0.9)";
+        ctx.beginPath();
+        ctx.arc(shipDraw.drawX, shipDraw.drawY, r, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+
+    function drawVelocityArrow(shipDraw, vel, scale) {
+      if (!shipDraw || !vel) return;
+      const vx = vel.vx;
+      const vy = vel.vy;
+      const speed = Math.hypot(vx, vy);
+      if (speed < 1e-6) return;
+
+      // 显示尺度：将速度大小映射为像素长度（并限制范围）
+      const len = clamp(speed * 18 * scale, 10 * scale, 90 * scale);
+
+      // 画布坐标下的单位方向：
+      // +x (径向) 向上 => drawY 变化为 -vx
+      // +y (横向) 向左 => drawX 变化为 -vy
+      const ux = (-vy) / speed;
+      const uy = (-vx) / speed;
+
+      const x1 = shipDraw.drawX;
+      const y1 = shipDraw.drawY;
+      const x2 = x1 + ux * len;
+      const y2 = y1 + uy * len;
+
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.92)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      // 箭头头部
+      const headLen = clamp(8 * scale, 5, 14);
+      const ang = Math.atan2(y2 - y1, x2 - x1);
+      const a1 = ang + Math.PI * 0.85;
+      const a2 = ang - Math.PI * 0.85;
+
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 + Math.cos(a1) * headLen, y2 + Math.sin(a1) * headLen);
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 + Math.cos(a2) * headLen, y2 + Math.sin(a2) * headLen);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    
+    function drawInitialVelocityArrow(view) {
+      // 在「当前段起点」绘制下一发脉冲的速度矢量（随左侧速度设置变化）。
+      // 未点火时是初始位置 (0, 200)；暂停时在当前位置（下一发脉冲的施加点）；
+      // 运行时在当前段起点（记录本发已锁定的脉冲参数）。
+      let sx, sy;
+      if (state.active && state.run) {
+        sx = state.run.x0; sy = state.run.y0;
+      } else if (state.run && state.paused) {
+        const p = currentRunPos();
+        sx = p ? p.x : state.run.x0; sy = p ? p.y : state.run.y0;
+      } else {
+        const init = computeInitialState();
+        sx = init.x0; sy = init.y0;
+      }
+      const ship0 = mapToCanvas(sx, sy, view);
+
+      const vx = state.uiVx0;
+      const vy = state.uiVy0;
+      const speed = Math.hypot(vx, vy);
+      if (speed < 1e-9) return;
+
+      // 取消下限：速度越小箭头越短，直至接近 0；上限固定为屏幕像素，避免视角放大后箭头过长
+      const len = clamp(speed * 120 * view.scale, 0, 240);
+
+      const ux = (-vy) / speed;
+      const uy = (-vx) / speed;
+
+      const x1 = ship0.drawX;
+      const y1 = ship0.drawY;
+      const x2 = x1 + ux * len;
+      const y2 = y1 + uy * len;
+
+      ctx.save();
+      ctx.setLineDash([10, 7]);
+      ctx.globalAlpha = 0.95;
+      ctx.strokeStyle = "rgba(255,255,255,0.98)";
+      ctx.lineWidth = clamp(5 * view.scale, 3.5, 7);
+      ctx.lineCap = "round";
+      ctx.shadowColor = "rgba(255,255,255,0.35)";
+      ctx.shadowBlur = 10;
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      // 箭头头部：根据长度自适应，避免接近 0 时头部过大
+      const headLen = clamp(len * 0.14, 6 * view.scale, 16 * view.scale);
+      const ang = Math.atan2(y2 - y1, x2 - x1);
+      const a1 = ang + Math.PI * 0.85;
+      const a2 = ang - Math.PI * 0.85;
+
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 + Math.cos(a1) * headLen, y2 + Math.sin(a1) * headLen);
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 + Math.cos(a2) * headLen, y2 + Math.sin(a2) * headLen);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+    function insideSafetyWorld(x, y) {
+      // 在世界坐标系中判定是否仍在红色测控边界框内
+      return (Math.abs(y) <= state.world.w / 2) && (Math.abs(x) <= state.world.h / 2);
+    }
+    // 绿色对接判定框（矩形）：径向 x 半高 h/2，沿航向 y 半宽 w/2
+    function insideTargetBox(x, y) {
+      return Math.abs(x) <= state.targetBox.h / 2 && Math.abs(y) <= state.targetBox.w / 2;
+    }
+    // ===== v27: Δv 放大镜 —— 脉冲施加前的速度增量矢量预览 =====
+    const dvScopeEl = document.getElementById("dvScope");
+    const dvScopeValEl = document.getElementById("dvScopeVal");
+    const dvScopeCtx = dvScopeEl ? dvScopeEl.getContext("2d") : null;
+
+    function dvArrow(g, cx, cy, vx, vy, k, color, dashed, width) {
+      // 速度空间：+x 径向向上、+y 横向向左（与主画布一致）
+      const speed = Math.hypot(vx, vy);
+      if (speed < 1e-9) return;
+      const ux = -vy / speed, uy = -vx / speed;
+      const len = Math.min(speed * k, Math.min(cx, cy) * 1.9);
+      const x2 = cx + ux * len, y2 = cy + uy * len;
+
+      g.save();
+      g.strokeStyle = color;
+      g.lineWidth = width;
+      g.lineCap = "round";
+      if (dashed) g.setLineDash([9, 7]);
+      g.beginPath();
+      g.moveTo(cx, cy);
+      g.lineTo(x2, y2);
+      g.stroke();
+      g.setLineDash([]);
+
+      const ang = Math.atan2(y2 - cy, x2 - cx);
+      const hl = clamp(len * 0.22, 10, 20);
+      g.beginPath();
+      g.moveTo(x2, y2);
+      g.lineTo(x2 + Math.cos(ang + Math.PI * 0.85) * hl, y2 + Math.sin(ang + Math.PI * 0.85) * hl);
+      g.moveTo(x2, y2);
+      g.lineTo(x2 + Math.cos(ang - Math.PI * 0.85) * hl, y2 + Math.sin(ang - Math.PI * 0.85) * hl);
+      g.stroke();
+      g.restore();
+    }
+
+    function renderDvScope() {
+      if (!dvScopeCtx) return;
+      const g = dvScopeCtx;
+      const W = dvScopeEl.width, H = dvScopeEl.height;
+      g.clearRect(0, 0, W, H);
+
+      const cx = W / 2, cy = H / 2;
+      const R = Math.min(cx, cy) * 0.86;   // 满量程半径（对应 |Δv| = 0.30 m/s）
+
+      // 同心圆 + 十字轴
+      g.save();
+      g.strokeStyle = "rgba(255,255,255,0.10)";
+      g.lineWidth = 1.5;
+      for (const f of [0.45, 0.9]) {
+        g.beginPath();
+        g.arc(cx, cy, R * f, 0, Math.PI * 2);
+        g.stroke();
+      }
+      g.strokeStyle = "rgba(255,255,255,0.18)";
+      g.beginPath(); g.moveTo(cx, 8); g.lineTo(cx, H - 8); g.stroke();
+      g.beginPath(); g.moveTo(8, cy); g.lineTo(W - 8, cy); g.stroke();
+
+      g.fillStyle = "rgba(255,255,255,0.45)";
+      g.font = "20px ui-sans-serif, system-ui";
+      g.textAlign = "left";
+      g.fillText("+x 径向", cx + 8, 26);
+      g.fillText("+y 横向", 10, cy - 12);
+      g.restore();
+
+      const k = R / 0.30;
+
+      // 灰色虚线：上一发已施加的脉冲（作为对比基准）
+      if (state.run) {
+        dvArrow(g, cx, cy, state.run.vx0, state.run.vy0, k, "rgba(255,255,255,0.38)", true, 4);
+      }
+      // 青色实线：当前进度条设定、尚未施加的 Δv
+      dvArrow(g, cx, cy, state.uiVx0, state.uiVy0, k, "rgba(123,223,242,0.98)", false, 7);
+
+      // 中心点
+      g.save();
+      g.fillStyle = "rgba(255,255,255,0.85)";
+      g.beginPath(); g.arc(cx, cy, 3.5, 0, Math.PI * 2); g.fill();
+
+      // 图例
+      g.font = "18px ui-sans-serif, system-ui";
+      g.textAlign = "right";
+      g.fillStyle = "rgba(123,223,242,0.95)";
+      g.fillText("本次 Δv", W - 12, H - 34);
+      if (state.run) {
+        g.fillStyle = "rgba(255,255,255,0.45)";
+        g.fillText("上一发", W - 12, H - 12);
+      }
+      g.restore();
+
+      if (dvScopeValEl) {
+        const mag = Math.hypot(state.uiVx0, state.uiVy0);
+        dvScopeValEl.textContent =
+          "vx0 = " + state.uiVx0.toFixed(2) +
+          " · vy0 = " + state.uiVy0.toFixed(2) +
+          " · |Δv| = " + mag.toFixed(3) + " m/s";
+      }
+    }
+
+    function tick() {
+      const w = viewport.clientWidth;
+      const h = viewport.clientHeight;
+
+      const dt = 1/60;
+
+      let params = state.run;
+      if (!params) {
+        const init = computeInitialState();
+        params = { x0: init.x0, y0: init.y0, vx0: state.uiVx0, vy0: state.uiVy0 };
+      }
+
+      if (state.active) state.simTime += dt * state.baseTimeScale * state.speedMult;
+
+      // 段式 CW：当前段从 t0 起算，t = simTime - t0；未点火时 t=0，飞船停在初始位置
+      const t = state.simTime - (params.t0 || 0);
+      const pos = getCWPosition(t, params.x0, params.y0, params.vx0, params.vy0);
+      const vel = getCWVelocity(t, params.x0, params.y0, params.vx0, params.vy0);
+
+      // 先算位置再取视图：视角缩放跟随本帧距离，避免滞后一帧
+      const view = getView(w, h, pos);
+      const origin = view.origin;
+
+      el.teleX.textContent = pos.x.toFixed(1);
+      el.teleY.textContent = pos.y.toFixed(1);
+
+      // 对接距离读数：入绿框转绿，出红框转红，其余默认色
+      const dist = Math.hypot(pos.x, pos.y);
+      if (el.teleDist) {
+        el.teleDist.textContent = dist.toFixed(1);
+        if (insideTargetBox(pos.x, pos.y)) {
+          el.teleDist.style.color = "rgba(90, 220, 140, 0.98)";
+        } else if (!insideSafetyWorld(pos.x, pos.y)) {
+          el.teleDist.style.color = "rgba(255, 107, 107, 0.98)";
+        } else {
+          el.teleDist.style.color = "";
+        }
+      }
+
+      const shipDraw = mapToCanvas(pos.x, pos.y, view);
+
+      if (state.active) {
+        if (insideTargetBox(pos.x, pos.y)) {
+          state.active = false;
+          setStatus("SUCCESS", "成功：第 " + state.burns + " 次脉冲后完成对接");
+          setLocked(false);
+          TIANGONG.runFinished("success", { simTime: state.simTime, x: pos.x, y: pos.y, reason: "docked" });
+        } else if (!insideSafetyWorld(pos.x, pos.y)) {
+          state.active = false;
+          setStatus("FAIL", "失败：第 " + state.burns + " 次脉冲后超出测控边界");
+          setLocked(false);
+          TIANGONG.runFinished("fail", { simTime: state.simTime, x: pos.x, y: pos.y, reason: "out_of_boundary" });
+        } else {
+          const last = state.path[state.path.length - 1];
+          const thresh = 0.6 / Math.max(0.15, view.scale);
+          if (!last || Math.hypot(pos.x - last.x, pos.y - last.y) > thresh) {
+            state.path.push({ x: pos.x, y: pos.y });
+          }
+        }
+      }
+
+      drawBackground(w, h);
+      drawAxes(w, h, origin);
+      drawSafetyBox(view);
+      drawTargetBox(origin, view.scale);
+      drawInitialVelocityArrow(view);
+      drawPath(view);
+      drawStationAndShip(origin, shipDraw, view.scale);
+      drawVelocityArrow(shipDraw, vel, view.scale);
+      renderDvScope();
+
+      // 手动缩放读数随倍率平滑变化
+      el.zoomVal.textContent = state.viewZoom.toFixed(2) + "×";
+
+      refreshRunButtons();
+
+      requestAnimationFrame(tick);
+    }
+
+
+    // ===== Minimal QR generator (based on Kazuhiko Arase qrcode-generator, MIT) =====
+    // This is a compact subset sufficient to render a QR code to canvas for short URLs.
+    (function(global){
+      function QR8bitByte(data){this.mode=1;this.data=data;}
+      QR8bitByte.prototype={getLength:function(){return this.data.length;},
+        write:function(buffer){for(var i=0;i<this.data.length;i++){buffer.put(this.data.charCodeAt(i),8);}}};
+
+      function QRBitBuffer(){this.buffer=[];this.length=0;}
+      QRBitBuffer.prototype={get:function(i){var b=Math.floor(i/8);return ((this.buffer[b]>>> (7-i%8))&1)==1;},
+        put:function(num,length){for(var i=0;i<length;i++){this.putBit(((num>>> (length-i-1))&1)==1);}},
+        putBit:function(bit){var b=Math.floor(this.length/8);if(this.buffer.length<=b){this.buffer.push(0);}
+          if(bit){this.buffer[b]|=(0x80>>> (this.length%8));}this.length++;}};
+
+      var QRMath={glog:function(n){if(n<1)throw new Error("glog");return QRMath.LOG_TABLE[n];},
+        gexp:function(n){while(n<0)n+=255;while(n>=256)n-=255;return QRMath.EXP_TABLE[n];},
+        EXP_TABLE:new Array(256),LOG_TABLE:new Array(256)};
+      for(var i=0;i<8;i++)QRMath.EXP_TABLE[i]=1<<i;
+      for(var i=8;i<256;i++)QRMath.EXP_TABLE[i]=QRMath.EXP_TABLE[i-4]^QRMath.EXP_TABLE[i-5]^QRMath.EXP_TABLE[i-6]^QRMath.EXP_TABLE[i-8];
+      for(var i=0;i<255;i++)QRMath.LOG_TABLE[QRMath.EXP_TABLE[i]]=i;
+
+      function QRPolynomial(num,shift){if(num.length==undefined)throw new Error("poly");var offset=0;
+        while(offset<num.length&&num[offset]==0)offset++;this.num=new Array(num.length-offset+shift);
+        for(var i=0;i<num.length-offset;i++)this.num[i]=num[i+offset];}
+      QRPolynomial.prototype={get:function(i){return this.num[i];},getLength:function(){return this.num.length;},
+        multiply:function(e){var num=new Array(this.getLength()+e.getLength()-1);for(var i=0;i<num.length;i++)num[i]=0;
+          for(var i=0;i<this.getLength();i++)for(var j=0;j<e.getLength();j++)num[i+j]^=QRMath.gexp(QRMath.glog(this.get(i))+QRMath.glog(e.get(j)));
+          return new QRPolynomial(num,0);},
+        mod:function(e){if(this.getLength()-e.getLength()<0)return this;var ratio=QRMath.glog(this.get(0))-QRMath.glog(e.get(0));
+          var num=new Array(this.getLength());for(var i=0;i<this.getLength();i++)num[i]=this.get(i);
+          for(var i=0;i<e.getLength();i++)num[i]^=QRMath.gexp(QRMath.glog(e.get(i))+ratio);
+          return new QRPolynomial(num,0).mod(e);}};
+
+      function QRErrorCorrectLevel(){};
+      QRErrorCorrectLevel.L=1;
+
+      var QRUtil={
+        PATTERN_POSITION_TABLE:[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54]],
+        G15: (1<<10)|(1<<8)|(1<<5)|(1<<4)|(1<<2)|(1<<1)|(1),
+        G18:(1<<12)|(1<<11)|(1<<10)|(1<<9)|(1<<8)|(1<<5)|(1<<2)|(1),
+        G15_MASK:(1<<14)|(1<<12)|(1<<10)|(1<<4)|(1<<1),
+        getBCHTypeInfo:function(data){var d=data<<10;while(QRUtil.getBCHDigit(d)-QRUtil.getBCHDigit(QRUtil.G15)>=0){
+            d^=(QRUtil.G15<<(QRUtil.getBCHDigit(d)-QRUtil.getBCHDigit(QRUtil.G15)));}return ((data<<10)|d)^QRUtil.G15_MASK;},
+        getBCHTypeNumber:function(data){var d=data<<12;while(QRUtil.getBCHDigit(d)-QRUtil.getBCHDigit(QRUtil.G18)>=0){
+            d^=(QRUtil.G18<<(QRUtil.getBCHDigit(d)-QRUtil.getBCHDigit(QRUtil.G18)));}return (data<<12)|d;},
+        getBCHDigit:function(data){var digit=0;while(data!=0){digit++;data>>>=1;}return digit;},
+        getPatternPosition:function(type){return QRUtil.PATTERN_POSITION_TABLE[type];},
+        getMask:function(maskPattern,i,j){switch(maskPattern){case 0:return (i+j)%2==0;case 1:return i%2==0;
+            case 2:return j%3==0;case 3:return (i+j)%3==0;case 4:return (Math.floor(i/2)+Math.floor(j/3))%2==0;
+            case 5:return (i*j)%2+(i*j)%3==0;case 6:return ((i*j)%2+(i*j)%3)%2==0;case 7:return ((i*j)%3+(i+j)%2)%2==0;
+            default:throw new Error("mask");}},
+        getErrorCorrectPolynomial:function(ecLength){var a=new QRPolynomial([1],0);for(var i=0;i<ecLength;i++)a=a.multiply(new QRPolynomial([1,QRMath.gexp(i)],0));return a;},
+        getLengthInBits:function(mode,type){
+          // only 8bit mode
+          if(type>=1 && type<10) return 8;
+          return 16;
+        },
+      };
+
+      function QRRSBlock(totalCount,dataCount){this.totalCount=totalCount;this.dataCount=dataCount;}
+      QRRSBlock.getRSBlocks=function(typeNumber,errorCorrectLevel){
+        // Support QR Code versions 1-10, Error Correction Level L
+        // NOTE: versions >=6 use *multiple* RS blocks; if treated as one block the QR will be invalid.
+        if(errorCorrectLevel!==QRErrorCorrectLevel.L){
+          throw new Error("Only EC Level L is supported in this lightweight QR generator");
+        }
+        var t=typeNumber|0;
+        // Table is an array of RS blocks: [ [totalCodewords, dataCodewords], ... ]
+        var tbl={
+          1:[[26,19]],
+          2:[[44,34]],
+          3:[[70,55]],
+          4:[[100,80]],
+          5:[[134,108]],
+          6:[[86,68],[86,68]],
+          7:[[98,78],[98,78]],
+          8:[[121,97],[121,97]],
+          9:[[146,116],[146,116]],
+          10:[[173,137],[173,137]]
+        };
+        if(!tbl[t]) throw new Error("Unsupported QR version: "+t);
+        var blocks=tbl[t];
+        var out=[];
+        for(var i=0;i<blocks.length;i++) out.push(new QRRSBlock(blocks[i][0], blocks[i][1]));
+        return out;
+      };
+
+
+      function QRCodeModel(typeNumber,errorCorrectLevel){this.typeNumber=typeNumber;this.errorCorrectLevel=errorCorrectLevel;
+        this.modules=null;this.moduleCount=0;this.dataCache=null;this.dataList=[];}
+      QRCodeModel.prototype={
+        addData:function(data){this.dataList.push(new QR8bitByte(data));this.dataCache=null;},
+        isDark:function(r,c){if(this.modules[r][c]!=null)return this.modules[r][c];else return false;},
+        getModuleCount:function(){return this.moduleCount;},
+        make:function(){if(this.typeNumber<1)this.typeNumber=1;this.makeImpl(false,0);},
+        makeImpl:function(test,maskPattern){
+          this.moduleCount=this.typeNumber*4+17;this.modules=new Array(this.moduleCount);
+          for(var r=0;r<this.moduleCount;r++){this.modules[r]=new Array(this.moduleCount);for(var c=0;c<this.moduleCount;c++)this.modules[r][c]=null;}
+          this.setupPositionProbePattern(0,0);this.setupPositionProbePattern(this.moduleCount-7,0);this.setupPositionProbePattern(0,this.moduleCount-7);
+          this.setupTimingPattern();if(this.typeNumber>=2)this.setupPositionAdjustPattern();if(this.typeNumber>=7)this.setupTypeNumber(test);this.setupTypeInfo(test,maskPattern);
+          if(this.dataCache==null)this.dataCache=QRCodeModel.createData(this.typeNumber,this.errorCorrectLevel,this.dataList);
+          this.mapData(this.dataCache,maskPattern);
+        },
+        setupPositionProbePattern:function(row,col){
+          for(var r=-1;r<=7;r++)for(var c=-1;c<=7;c++){
+            if(row+r<=-1||this.moduleCount<=row+r||col+c<=-1||this.moduleCount<=col+c)continue;
+            if((0<=r&&r<=6&&(c==0||c==6))||(0<=c&&c<=6&&(r==0||r==6))||(2<=r&&r<=4&&2<=c&&c<=4))this.modules[row+r][col+c]=true;
+            else this.modules[row+r][col+c]=false;}
+        },
+        setupTimingPattern:function(){
+          for(var i=8;i<this.moduleCount-8;i++){
+            if(this.modules[i][6]==null)this.modules[i][6]=(i%2==0);
+            if(this.modules[6][i]==null)this.modules[6][i]=(i%2==0);
+          }
+        },
+        setupPositionAdjustPattern:function(){
+          var pos=QRUtil.getPatternPosition(this.typeNumber)||[];
+          for(var i=0;i<pos.length;i++){
+            for(var j=0;j<pos.length;j++){
+              var row=pos[i];
+              var col=pos[j];
+              if(this.modules[row][col]!=null) continue;
+              for(var r=-2;r<=2;r++){
+                for(var c=-2;c<=2;c++){
+                  if(row+r<0||this.moduleCount<=row+r||col+c<0||this.moduleCount<=col+c) continue;
+                  if(r==-2||r==2||c==-2||c==2||(r==0&&c==0)) this.modules[row+r][col+c]=true;
+                  else this.modules[row+r][col+c]=false;
+                }
+              }
+            }
+          }
+        },
+        setupTypeNumber:function(test){
+          var bits=QRUtil.getBCHTypeNumber(this.typeNumber);
+          for(var i=0;i<18;i++){
+            var mod=(!test&&((bits>>i)&1)==1);
+            this.modules[Math.floor(i/3)][i%3 + this.moduleCount-8-3]=mod;
+            this.modules[i%3 + this.moduleCount-8-3][Math.floor(i/3)]=mod;
+          }
+        },
+
+setupTypeInfo:function(test,maskPattern){
+          var data=(QRErrorCorrectLevel.L<<3)|maskPattern;
+          var bits=QRUtil.getBCHTypeInfo(data);
+          for(var i=0;i<15;i++){
+            var mod=(!test&&((bits>>i)&1)==1);
+            if(i<6)this.modules[i][8]=mod;
+            else if(i<8)this.modules[i+1][8]=mod;
+            else this.modules[this.moduleCount-15+i][8]=mod;
+          }
+          for(var i=0;i<15;i++){
+            var mod=(!test&&((bits>>i)&1)==1);
+            if(i<8)this.modules[8][this.moduleCount-i-1]=mod;
+            else if(i<9)this.modules[8][15-i-1+1]=mod;
+            else this.modules[8][15-i-1]=mod;
+          }
+          this.modules[this.moduleCount-8][8]=(!test);
+        },
+        mapData:function(data,maskPattern){
+          var inc=-1;var row=this.moduleCount-1;var bitIndex=7;var byteIndex=0;
+          for(var col=this.moduleCount-1;col>0;col-=2){
+            if(col==6)col--;
+            while(true){
+              for(var c=0;c<2;c++){
+                if(this.modules[row][col-c]==null){
+                  var dark=false;
+                  if(byteIndex<data.length)dark=(((data[byteIndex]>>>bitIndex)&1)==1);
+                  var mask=QRUtil.getMask(maskPattern,row,col-c);
+                  if(mask)dark=!dark;
+                  this.modules[row][col-c]=dark;
+                  bitIndex--;
+                  if(bitIndex==-1){byteIndex++;bitIndex=7;}
+                }
+              }
+              row+=inc;
+              if(row<0||this.moduleCount<=row){row-=inc;inc=-inc;break;}
+            }
+          }
+        }
+      };
+      QRCodeModel.createData=function(typeNumber,errorCorrectLevel,dataList){
+        var rsBlocks=QRRSBlock.getRSBlocks(typeNumber,errorCorrectLevel);
+        var buffer=new QRBitBuffer();
+        for(var i=0;i<dataList.length;i++){
+          var data=dataList[i];
+          buffer.put(4,4); // 8bit mode
+          buffer.put(data.getLength(), QRUtil.getLengthInBits(data.mode,typeNumber));
+          data.write(buffer);
+        }
+        // terminator
+        var totalDataCount=0;
+        for(var i=0;i<rsBlocks.length;i++) totalDataCount+=rsBlocks[i].dataCount;
+        // Overflow check (avoid generating invalid QR when URL is too long)
+        if(buffer.length>totalDataCount*8){ throw new Error("QR data overflow"); }
+        if(buffer.length+4<=totalDataCount*8) buffer.put(0,4);
+        while(buffer.length%8!=0) buffer.putBit(false);
+        // padding
+        while(buffer.buffer.length<totalDataCount){
+          buffer.put(0xec,8);
+          if(buffer.buffer.length>=totalDataCount) break;
+          buffer.put(0x11,8);
+        }
+
+        // Split to RS blocks
+        var offset=0;
+        var maxDcCount=0;
+        var maxEcCount=0;
+        var dcdata=new Array(rsBlocks.length);
+        var ecdata=new Array(rsBlocks.length);
+
+        for(var r=0;r<rsBlocks.length;r++){
+          var dcCount=rsBlocks[r].dataCount;
+          var ecCount=rsBlocks[r].totalCount-dcCount;
+          maxDcCount=Math.max(maxDcCount, dcCount);
+          maxEcCount=Math.max(maxEcCount, ecCount);
+
+          dcdata[r]=new Array(dcCount);
+          for(var i=0;i<dcdata[r].length;i++){
+            dcdata[r][i]=0xff & buffer.buffer[i+offset];
+          }
+          offset += dcCount;
+
+          var rsPoly=QRUtil.getErrorCorrectPolynomial(ecCount);
+          var rawPoly=new QRPolynomial(dcdata[r], rsPoly.getLength()-1);
+          var modPoly=rawPoly.mod(rsPoly);
+
+          ecdata[r]=new Array(rsPoly.getLength()-1);
+          for(var i=0;i<ecdata[r].length;i++){
+            var modIndex=i + modPoly.getLength() - ecdata[r].length;
+            ecdata[r][i]=(modIndex>=0)?modPoly.get(modIndex):0;
+          }
+        }
+
+        // Interleave
+        var totalCodeCount=0;
+        for(var i=0;i<rsBlocks.length;i++) totalCodeCount += rsBlocks[i].totalCount;
+        var data=new Array(totalCodeCount);
+        var index=0;
+
+        for(var i=0;i<maxDcCount;i++){
+          for(var r=0;r<rsBlocks.length;r++){
+            if(i<dcdata[r].length) data[index++]=dcdata[r][i];
+          }
+        }
+        for(var i=0;i<maxEcCount;i++){
+          for(var r=0;r<rsBlocks.length;r++){
+            if(i<ecdata[r].length) data[index++]=ecdata[r][i];
+          }
+        }
+        return data;
+      };
+
+      global.__makeQRToCanvas=function(canvas, text){
+        // High-contrast, sharp QR (works better with WeChat/Baidu scanners)
+        var ctx=canvas.getContext("2d");
+        // Use CSS size as the visual size; scale backing store for HiDPI screens
+        var cssSize=parseInt((getComputedStyle(canvas).width||"128").replace(/px/g,''),10) || 128;
+        var dpr=Math.max(1, Math.min(3, (window.devicePixelRatio||1)));
+        canvas.style.width=cssSize+"px";
+        canvas.style.height=cssSize+"px";
+        canvas.width=Math.round(cssSize*dpr);
+        canvas.height=Math.round(cssSize*dpr);
+        ctx.setTransform(1,0,0,1,0,0);
+        ctx.imageSmoothingEnabled=false;
+
+        // Auto-pick the smallest version that fits the URL (valid QR with proper patterns)
+        var qr=null; var lastErr=null;
+        for(var type=1; type<=10; type++){
+          try{
+            qr=new QRCodeModel(type,QRErrorCorrectLevel.L);
+            qr.addData(String(text||""));
+            qr.make();
+            lastErr=null;
+            break;
+          }catch(e){
+            lastErr=e;
+            qr=null;
+          }
+        }
+        if(!qr){ throw (lastErr||new Error("QR生成失败")); }
+
+        var count=qr.getModuleCount();
+        var size=canvas.width; // draw in device pixels
+
+        // Ensure quiet zone >= 4 modules on each side
+        var cell=Math.floor(size/(count+8));
+        if(cell<1) cell=1;
+        var margin=cell*4;
+        var used=cell*count + margin*2;
+        if(used>size){
+          cell=Math.max(1, Math.floor(size/(count+8)));
+          margin=cell*4;
+          used=cell*count + margin*2;
+        }
+        var offset=Math.floor((size-used)/2) + margin;
+
+        ctx.fillStyle="#fff";
+        ctx.fillRect(0,0,size,size);
+        ctx.fillStyle="#000";
+        for(var r=0;r<count;r++){
+          for(var c=0;c<count;c++){
+            if(qr.isDark(r,c)){
+              ctx.fillRect(offset+c*cell, offset+r*cell, cell, cell);
+            }
+          }
+        }
+      };
+    })(window);
+    // ===== End QR generator =====
+
+    setStatus("STANDBY", "");
+    setLocked(false);
+
+    // 生成“本游戏二维码”：
+// - http/https 线上环境：自动使用当前页面 URL（扫码可直接打开同一页面）
+// - file:// 本地预览：二维码无法指向本地文件；会显示部署提示，可点击二维码设置你部署后的线上链接（保存在浏览器本地）
+    const GAME_URL_OVERRIDE = ""; // 可选：填入你部署后的固定网址（例如 https://example.com/tiangong/ ），留空则自动判断
+    const QR_STORAGE_KEY = "tiangong_game_url_override";
+
+    function normalizeUrl(u) {
+      u = (u || "").trim();
+      if (!u) return "";
+      // 允许用户只输入域名：自动补 https://
+      if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+      return u;
+    }
+
+    function resolveGameUrlForQR() {
+      const hard = normalizeUrl(GAME_URL_OVERRIDE);
+      if (hard) return hard;
+
+      if (location.protocol === "http:" || location.protocol === "https:") {
+        return (location.origin + location.pathname);
+      }
+
+      // file://：尝试读取用户之前保存过的线上链接
+      try {
+        const saved = normalizeUrl(localStorage.getItem(QR_STORAGE_KEY) || "");
+        if (saved) return saved;
+      } catch (e) {}
+
+      return "";
+    }
+
+    function drawQrPlaceholder(canvas) {
+      const ctx2 = canvas.getContext("2d");
+      const w = canvas.width, h = canvas.height;
+      ctx2.clearRect(0, 0, w, h);
+      ctx2.fillStyle = "#fff";
+      ctx2.fillRect(0, 0, w, h);
+      ctx2.strokeStyle = "rgba(0,0,0,0.12)";
+      ctx2.lineWidth = 2;
+      ctx2.strokeRect(1, 1, w - 2, h - 2);
+
+      ctx2.fillStyle = "rgba(0,0,0,0.78)";
+      ctx2.font = "bold 14px system-ui, -apple-system, Segoe UI, sans-serif";
+      ctx2.textAlign = "center";
+      ctx2.fillText("请先部署到网站", w / 2, h / 2 - 8);
+
+      ctx2.fillStyle = "rgba(0,0,0,0.62)";
+      ctx2.font = "12px system-ui, -apple-system, Segoe UI, sans-serif";
+      ctx2.fillText("点击此处设置链接", w / 2, h / 2 + 16);
+    }
+
+    function renderGameQr() {
+      const canvas = document.getElementById("gameQr");
+      const hint = document.getElementById("gameQrHint");
+      if (!canvas) return;
+
+      const ctx2 = canvas.getContext("2d");
+      const img = new Image();
+      img.onload = () => {
+        ctx2.clearRect(0, 0, canvas.width, canvas.height);
+        ctx2.fillStyle = "#fff";
+        ctx2.fillRect(0, 0, canvas.width, canvas.height);
+        ctx2.imageSmoothingEnabled = false;
+        ctx2.drawImage(img, 0, 0, canvas.width, canvas.height);
+      };
+      img.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQCAIAAAAP3aGbAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAHzElEQVR4nO3dQY5bSRIFwa6B7n9lzQ26chGIDifN1gLJ+qQcuXnIn79///4DUPC///oDALwSLCBDsIAMwQIyBAvIECwgQ7CADMECMgQLyBAsIEOwgAzBAjIEC8gQLCBDsIAMwQIyBAvIECwgQ7CADMECMgQLyBAsIEOwgIw/Uy/08/Mz9VJFU9c7vjzGl/fa/DoGr7a89udvfq0fbPAX4oQFZAgWkCFYQIZgARmCBWQIFpAhWECGYAEZggVkCBaQIVhAxtiW8MXgpGjN4Apsaig35YOHctfmlo++/D/ICycsIEOwgAzBAjIEC8gQLCBDsIAMwQIyBAvIECwgQ7CADMECMla3hC+iF+odfLsRg19HdN93zQf/B3nhhAVkCBaQIVhAhmABGYIFZAgWkCFYQIZgARmCBWQIFpAhWEDGuS0hv4oO7javZbx2BSRTnLCADMECMgQLyBAsIEOwgAzBAjIEC8gQLCBDsIAMwQIyBAvIsCXcc23gNvV5HreNmzvBzdexSdzkhAVkCBaQIVhAhmABGYIFZAgWkCFYQIZgARmCBWQIFpAhWEDGuS3hBy+zpnZ5g/u+kddZ/so2//yDv8aDH2mTExaQIVhAhmABGYIFZAgWkCFYQIZgARmCBWQIFpAhWECGYAEZq1vCqYVX1OZO8NrrLH+kF9c+z+PbfTknLCBDsIAMwQIyBAvIECwgQ7CADMECMgQLyBAsIEOwgAzBAjIEC8j4+fJ7Gfl3g3PczQtQXxwcP/MrJywgQ7CADMECMgQLyBAsIEOwgAzBAjIEC8gQLCBDsIAMwQIyxi5SLd7uuXxL6IupMd3BR1TcCR60OW88OKV0wgIyBAvIECwgQ7CADMECMgQLyBAsIEOwgAzBAjIEC8gQLCBjbEu46drecPalRkSHcpuPaOoXsvyoN3/YB69udMICMgQLyBAsIEOwgAzBAjIEC8gQLCBDsIAMwQIyBAvIECwg4+fawC16o9zmx772iJZvprtmeUxX/E9kSwh8I8ECMgQLyBAsIEOwgAzBAjIEC8gQLCBDsIAMwQIyBAvIOLclfHFtuPfo2grs4Abw4Ep007Vv5Nptm/84YQEhggVkCBaQIVhAhmABGYIFZAgWkCFYQIZgARmCBWQIFpBxbkt4bUz3+F5Tj9FOcM21y/seTX3sa//RHjlhARmCBWQIFpAhWECGYAEZggVkCBaQIVhAhmABGYIFZAgWkPFn6oWuzZemPM6gNj92cf75/s++2bVHdPA/rBMWkCFYQIZgARmCBWQIFpAhWECGYAEZggVkCBaQIVhAhmABGWP3El7bAC47uLr61fJXv/l210Z5g1+9ewkBGgQLyBAsIEOwgAzBAjIEC8gQLCBDsIAMwQIyBAvIECwgQ7CAjLGLVK9tKZd3m5tz080/f3C1u7n9vvYYP9jyztwJC8gQLCBDsIAMwQIyBAvIECwgQ7CADMECMgQLyBAsIEOwgIyxLWHR8prs2jBteXB3cAE68jrXvtZly/faOmEBGYIFZAgWkCFYQIZgARmCBWQIFpAhWECGYAEZggVkCBaQsbolnJoUXbsE8PGlXizf8sa/Ozi3nBK9utEJC8gQLCBDsIAMwQIyBAvIECwgQ7CADMECMgQLyBAsIEOwgIyfa/u+aw7eOrf5lb1Y/lqLH3v5V/TBvxAnLCBDsIAMwQIyBAvIECwgQ7CADMECMgQLyBAsIEOwgAzBAjLGtoRPb7a4Nzw4gzo4S/zVl//5y64New8OhJ2wgAzBAjIEC8gQLCBDsIAMwQIyBAvIECwgQ7CADMECMgQLyDh3L2Fxb/ho888/uALbfNrRX8iU4gWgj5ywgAzBAjIEC8gQLCBDsIAMwQIyBAvIECwgQ7CADMECMgQLyFi9l/DLHbwq8VfLm8Tidu/gJHNqbTpl8BE5YQEZggVkCBaQIVhAhmABGYIFZAgWkCFYQIZgARmCBWQIFpDxZ+qFiiuwQS9rqc2F19TibPAzb77dtTHd4COaertrj+iRExaQIVhAhmABGYIFZAgWkCFYQIZgARmCBWQIFpAhWECGYAEZggVkjI2fXxQvbV3ef049ooPT1s07Wa+tf4u//JucsIAMwQIyBAvIECwgQ7CADMECMgQLyBAsIEOwgAzBAjIEC8hY3RK+2By4LS+8rg3TNod7j2+3uTeccvC20Q9epDphARmCBWQIFpAhWECGYAEZggVkCBaQIVhAhmABGYIFZAgWkHFuS/jBNpdZxVHeoM0/f/Axbu7yDk4gXzhhARmCBWQIFpAhWECGYAEZggVkCBaQIVhAhmABGYIFZAgWkGFLuOfavu/aPYmPL1V8jAdvwFy+lXKKExaQIVhAhmABGYIFZAgWkCFYQIZgARmCBWQIFpAhWECGYAEZ57aEH3xZXnEod3AEt/k6L5Yf0ZfPJJ2wgAzBAjIEC8gQLCBDsIAMwQIyBAvIECwgQ7CADMECMgQLyFjdEi5fYXbNBw/crpmabb5Y/lVfu01yeW/ohAVkCBaQIVhAhmABGYIFZAgWkCFYQIZgARmCBWQIFpAhWEDGz5ePzoAQJywgQ7CADMECMgQLyBAsIEOwgAzBAjIEC8gQLCBDsIAMwQIyBAvIECwgQ7CADMECMgQLyBAsIEOwgAzBAjIEC8gQLCBDsIAMwQIyBAvI+D815Do7EkTmGgAAAABJRU5ErkJggg==";
+      if (hint) hint.textContent = "";
+    }
+
+
+    renderGameQr();
+
+    // v27: 二维码浮窗开合（收起后留在左侧边缘的「扫码玩」小标签）
+    (function initQrFloat() {
+      const floatEl = document.getElementById("qrFloat");
+      const tab = document.getElementById("qrTab");
+      const closeBtn = document.getElementById("qrClose");
+      if (!floatEl || !tab || !closeBtn) return;
+      const setHidden = (hidden) => {
+        document.body.classList.toggle("qr-hidden", hidden);
+        tab.setAttribute("aria-expanded", hidden ? "false" : "true");
+        tab.title = hidden ? "展开二维码" : "收起二维码";
+      };
+      closeBtn.addEventListener("click", () => setHidden(true));
+      tab.addEventListener("click", () => setHidden(false));
+    })();
+
+    // 项目运行数据面板 + 教学行为埋点（失败时静默降级，不影响仿真）
+    try { TIANGONG.init(); } catch (e) {}
+
+    // AI 助教侧栏 + 确定性求解器（无 Key / 断网时自动降级为规则模式）
+    try { AI_TUTOR.init(); } catch (e) {}
+
+    requestAnimationFrame(tick);
+  </script>
+
+
+<script type="module" src="./中国空间站交会对接小游戏_files/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;0582ea60cf0b480398f8b07db148e0a3&quot;,&quot;r&quot;:1,&quot;spa&quot;:2}" crossorigin="anonymous"></script>
+</body></html>

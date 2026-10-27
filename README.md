@@ -33,4 +33,4 @@ python3 server.py
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) © 2026 祁瑞, 方辰

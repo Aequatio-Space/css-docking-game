@@ -188,6 +188,47 @@
       border-color: rgba(123,223,242,0.45);
     }
 
+    /* v31: 任务成功分享图 */
+    .shareBtn{
+      border: none;
+      border-radius: 12px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+      color: #0b1020;
+      background: linear-gradient(90deg, rgba(126,226,168,0.95), rgba(123,223,242,0.9));
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.22);
+    }
+    .shareBtn:active{ transform: translateY(1px); }
+    .shareOverlay{
+      position: fixed; inset: 0; z-index: 80;
+      background: rgba(3,6,14,0.78);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .shareOverlay[hidden]{ display: none; }
+    .shareCard{
+      width: min(520px, 94vw);
+      background: rgba(10,16,32,0.98);
+      border: 1px solid rgba(123,223,242,0.35);
+      border-radius: 18px;
+      padding: 16px;
+      text-align: center;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.55);
+    }
+    .shareTitle{ font-size: 17px; font-weight: 900; color: rgba(255,255,255,0.92); margin-bottom: 10px; }
+    .shareImg{ width: 100%; max-height: 64vh; object-fit: contain; border-radius: 12px; background: #060b18; }
+    .shareHint{ margin-top: 10px; font-size: 12px; color: rgba(255,255,255,0.62); }
+    .shareRow{ margin-top: 12px; display: flex; gap: 10px; justify-content: center; }
+    .shareDl, .shareClose{
+      border-radius: 12px; padding: 9px 16px; font-weight: 900; font-size: 14px; cursor: pointer; text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+    .shareDl{ background: linear-gradient(90deg, rgba(126,226,168,0.95), rgba(123,223,242,0.9)); color: #0b1020; border: none; }
+    .shareClose{ background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.85); }
+
     .zoomRow{
       display: grid;
       grid-template-columns: 0.55fr 1fr 0.55fr 1.15fr;
@@ -1203,6 +1244,7 @@
       <div class="status">
         <div class="badge" id="statusBadge" style="border-color: rgba(255, 255, 255, 0.55);"><span class="dot" id="statusDot" style="background: rgba(255, 255, 255, 0.55);"></span><span id="statusText">STANDBY</span></div>
         <div class="msg" id="msgText"></div>
+        <button class="shareBtn" id="shareBtn" type="button" hidden title="生成任务成功纪念图，可保存后发朋友圈">分享图</button>
       </div>
       <div class="telemetry">
         <div class="kv"><span class="k">Rel x (径向)</span><span id="teleX">0.0</span></div>
@@ -1278,6 +1320,19 @@
     <div class="qrTitleSmall">扫码在手机玩</div>
     <canvas id="gameQr" width="256" height="256" title="点击可设置线上链接"></canvas>
     <div class="qrHint" id="gameQrHint"></div>
+  </div>
+
+  <!-- v31: 任务成功分享图预览浮层（手机长按保存，电脑下载 PNG） -->
+  <div class="shareOverlay" id="shareOverlay" hidden>
+    <div class="shareCard">
+      <div class="shareTitle">任务成功纪念图</div>
+      <img class="shareImg" id="shareImg" alt="交会对接任务成功纪念图" />
+      <div class="shareHint">手机可长按图片保存到相册再发朋友圈；电脑点下方按钮下载 PNG。</div>
+      <div class="shareRow">
+        <a class="shareDl" id="shareDl" download="交会对接任务成功.png">保存 PNG</a>
+        <button class="shareClose" id="shareClose" type="button">关闭</button>
+      </div>
+    </div>
   </div>
 
   <!-- v26: AI 助教侧栏（需求二）——模型只解释，数值全部来自本地确定性求解器 -->
@@ -3626,7 +3681,12 @@
       zoomOutBtn: document.getElementById("zoomOutBtn"),
       zoomInBtn: document.getElementById("zoomInBtn"),
       zoomAutoBtn: document.getElementById("zoomAutoBtn"),
-      zoomVal: document.getElementById("zoomVal")
+      zoomVal: document.getElementById("zoomVal"),
+      shareBtn: document.getElementById("shareBtn"),
+      shareOverlay: document.getElementById("shareOverlay"),
+      shareImg: document.getElementById("shareImg"),
+      shareDl: document.getElementById("shareDl"),
+      shareClose: document.getElementById("shareClose")
     };
 
     function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -3660,6 +3720,7 @@
       if (status === "PAUSED")  color = "rgba(255,209,102,0.95)";
       el.statusDot.style.background = color;
       el.badge.style.borderColor = color.replace("0.95", "0.35");
+      if (el.shareBtn) el.shareBtn.hidden = (status !== "SUCCESS");
     }
 
     function setLocked(locked) {
@@ -4176,6 +4237,113 @@
 
     // 暴露给 AI 求解器（定义在独立的模块作用域里）复用同一撞击判定
     try { if (window.TIANGONG) window.TIANGONG.spritesCollide = spritesCollideWorld; } catch (e) {}
+
+    // ===== v31: 任务成功分享图 —— 离屏合成 1080×1350 纪念图（画面快照 + 成绩 + 游戏二维码） =====
+    // 服务需求一/三：学生把成就图发到朋友圈，图上二维码可直接转化为新用户；
+    // 每次导出埋点 share_export，祁老师可在统计面板 / CSV 中审计分享次数，作为自发传播证据。
+    function buildShareImage() {
+      const W = 1080, H = 1350;
+      const cv = document.createElement("canvas");
+      cv.width = W; cv.height = H;
+      const g = cv.getContext("2d");
+      const FONT = "system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif";
+
+      // 深空背景 + 星星（确定性伪随机，多次生成画面一致）
+      const bg = g.createLinearGradient(0, 0, 0, H);
+      bg.addColorStop(0, "#070d1c");
+      bg.addColorStop(1, "#101c38");
+      g.fillStyle = bg;
+      g.fillRect(0, 0, W, H);
+      for (let i = 0; i < 150; i++) {
+        const fx = Math.sin(i * 12.9898) * 43758.5453;
+        const fy = Math.sin(i * 78.233) * 12543.1234;
+        const sx = (fx - Math.floor(fx)) * W;
+        const sy = (fy - Math.floor(fy)) * H;
+        g.fillStyle = "rgba(255,255,255," + (0.25 + ((i * 13) % 10) / 10 * 0.6).toFixed(2) + ")";
+        g.beginPath();
+        g.arc(sx, sy, 0.6 + ((i * 7) % 10) / 10 * 1.6, 0, Math.PI * 2);
+        g.fill();
+      }
+
+      // 标题
+      g.textAlign = "center";
+      g.fillStyle = "rgba(255,255,255,0.96)";
+      g.font = "900 54px " + FONT;
+      g.fillText("中国空间站交会对接", W / 2, 92);
+      g.fillStyle = "rgba(126,226,168,0.98)";
+      g.font = "900 46px " + FONT;
+      g.fillText("任务成功 · 完成对接", W / 2, 156);
+
+      // 当前画面快照（星野、轨迹与两船最终相对位置，即学生自己玩出来的成功画面）
+      const src = document.getElementById("c");
+      const pad = 40, snapY = 196, snapW = W - pad * 2, maxSnapH = 640, r = 18;
+      let snapH = maxSnapH, snapX = pad, snapDrawW = snapW;
+      function roundRectPath(x0, y0, w0, h0) {
+        g.beginPath();
+        g.moveTo(x0 + r, y0);
+        g.arcTo(x0 + w0, y0, x0 + w0, y0 + h0, r);
+        g.arcTo(x0 + w0, y0 + h0, x0, y0 + h0, r);
+        g.arcTo(x0, y0 + h0, x0, y0, r);
+        g.arcTo(x0, y0, x0 + w0, y0, r);
+        g.closePath();
+      }
+      if (src && src.width > 0) {
+        snapH = Math.round(src.height * (snapW / src.width));
+        if (snapH > maxSnapH) snapH = maxSnapH; // 快照限高，为下方成绩条与二维码留出不重叠的空间
+        snapDrawW = Math.round(src.width * (snapH / src.height));
+        snapX = Math.round((W - snapDrawW) / 2);
+        g.save();
+        roundRectPath(snapX, snapY, snapDrawW, snapH);
+        g.clip();
+        g.drawImage(src, snapX, snapY, snapDrawW, snapH);
+        g.restore();
+        g.strokeStyle = "rgba(123,223,242,0.4)";
+        g.lineWidth = 2;
+        roundRectPath(snapX, snapY, snapDrawW, snapH);
+        g.stroke();
+      }
+
+      // 成绩条
+      const secs = Math.max(0, Math.round(state.simTime || 0));
+      g.fillStyle = "rgba(255,255,255,0.92)";
+      g.font = "700 34px " + FONT;
+      g.fillText("脉冲机动 " + (state.burns || 0) + " 次 · 用时 " + secs + " 秒", W / 2, snapY + snapH + 58);
+      g.fillStyle = "rgba(255,255,255,0.55)";
+      g.font = "400 26px " + FONT;
+      g.fillText(new Date().toLocaleDateString("zh-CN"), W / 2, snapY + snapH + 100);
+
+      // 游戏二维码（复用页面 #gameQr，线上环境即本页地址）+ 引导语
+      const qr = document.getElementById("gameQr");
+      const qrSize = 180, qrX = W / 2 - qrSize / 2, qrY = H - 336;
+      g.fillStyle = "#ffffff";
+      g.fillRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+      if (qr && qr.width > 0) g.drawImage(qr, qrX, qrY, qrSize, qrSize);
+      g.fillStyle = "rgba(255,255,255,0.85)";
+      g.font = "700 28px " + FONT;
+      g.fillText("扫码一起挑战", W / 2, qrY + qrSize + 48);
+
+      // 页脚
+      g.fillStyle = "rgba(123,223,242,0.75)";
+      g.font = "400 24px " + FONT;
+      g.fillText("人工智能 + 虚拟仿真实验 · 长按保存 / 转发朋友圈", W / 2, H - 40);
+
+      return cv;
+    }
+
+    (function initShareImage() {
+      if (!el.shareBtn || !el.shareOverlay) return;
+      el.shareBtn.addEventListener("click", function () {
+        try {
+          const url = buildShareImage().toDataURL("image/png");
+          if (el.shareImg) el.shareImg.src = url;
+          if (el.shareDl) el.shareDl.href = url;
+          el.shareOverlay.hidden = false;
+          try { TIANGONG.track("share_export", { burns: state.burns || 0, simTime: Math.round(state.simTime || 0) }); } catch (e) {}
+        } catch (e) {}
+      });
+      if (el.shareClose) el.shareClose.addEventListener("click", function () { el.shareOverlay.hidden = true; });
+      el.shareOverlay.addEventListener("click", function (e) { if (e.target === el.shareOverlay) el.shareOverlay.hidden = true; });
+    })();
 
     function drawStationAndShip(origin, shipDraw, scale) {
       ctx.save();

@@ -48,6 +48,27 @@
       font-size: 14px;
       line-height: 1.5;
     }
+    /* v28: 说明文字在手机上可折叠，给 Δv 放大镜和主按钮腾出首屏空间 */
+    .helpBox{ margin: 0 0 12px; }
+    .helpBox > summary{
+      display: none;
+      cursor: pointer;
+      list-style: none;
+      padding: 8px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.05);
+      font-size: 13px;
+      font-weight: 800;
+      color: rgba(255,255,255,0.86);
+    }
+    .helpBox > summary::-webkit-details-marker{ display: none; }
+    .helpBox > summary::after{ content: "▾"; float: right; opacity: 0.7; }
+    .helpBox[open] > summary::after{ content: "▴"; }
+    @media (max-width: 900px){
+      .helpBox > summary{ display: block; }
+      .helpBox[open] > summary{ margin-bottom: 10px; }
+    }
     .control {
       background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.08);
@@ -219,33 +240,34 @@
       border-radius: 8px;
       border: 1px solid rgba(255,255,255,0.08);
     }
-    .viewport { position: relative; flex: 1; min-width: 0; }
-    canvas { width: 100%; height: 100%; display: block; }
+    .viewport { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    /* v28: 画面区单独一层，信息栏（.hud）不再浮在画布上遮住飞船 */
+    .stage { position: relative; flex: 1 1 auto; min-height: 0; }
+    .stage canvas { width: 100%; height: 100%; display: block; }
     .hud {
-      position: absolute;
-      left: 14px;
-      top: 14px;
-      min-width: 280px;
-      padding: 10px 12px;
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px 16px;
+      padding: 8px 14px;
       background: var(--panel);
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 14px;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
-      pointer-events: auto;
-      cursor: grab;
-      touch-action: none;
-      /* v24: HUD 缩小至原来的 3/4 */
-      transform: scale(0.75);
-      transform-origin: 0 0;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      z-index: 2;
     }
-    .hud.dragging{ cursor: grabbing; }
     .hud .status {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 10px;
-      margin-bottom: 6px;
+      flex: 1 1 220px;
+      min-width: 0;
+    }
+    .hud .msg {
+      color: rgba(255,255,255,0.72);
+      font-size: 13px;
+      line-height: 1.35;
+      min-width: 0;
+      word-break: break-word;
     }
     .badge {
       display: inline-flex;
@@ -258,16 +280,19 @@
       font-size: 14px;
       font-weight: 800;
       letter-spacing: 0.2px;
+      flex: 0 0 auto;
     }
     .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--muted); }
     .telemetry {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px 10px;
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-left: auto;
       font-variant-numeric: tabular-nums;
       font-size: 14px;
       color: rgba(255,255,255,0.86);
     }
+    .telemetry .kv { display: flex; align-items: baseline; gap: 5px; white-space: nowrap; }
     .k { color: var(--muted); }
     .watermark {
       position: absolute;
@@ -582,10 +607,68 @@
     }
     .statsCopy:hover{ background: rgba(123,223,242,0.22); }
     .statsBadge.offline .statItem b{ color: var(--muted); font-size: 12px; }
+    /* ===== v27: AI 数据 + 周趋势 + 申报导出（P0/P1） ===== */
+    .statsCard .secTitle{ margin: 2px 0 7px; font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: 0.5px; }
+    .trendBox{ margin: 0 0 10px; padding: 8px 8px 6px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); }
+    .trendBox canvas{ display: block; width: 100%; height: 96px; }
+    .trendLegend{ display: flex; align-items: center; gap: 10px; margin-top: 5px; font-size: 10px; color: var(--muted); }
+    .trendLegend i{ display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+    .trendLegend .trendRate{ margin-left: auto; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.8); }
+    .aiGrid{ grid-template-columns: 1fr 1fr 1fr 1fr; }
+    .aiGrid .cell{ padding: 7px 3px; }
+    .aiGrid .cell b{ font-size: 13px; }
+    .aiGrid .cell span{ font-size: 9px; }
+    .statsActions{ display: flex; gap: 6px; margin-top: 8px; }
+    .statsActions[hidden]{ display: none; }
+    .statsLink{
+      flex: 1 1 0;
+      text-align: center;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.85);
+      border-radius: 999px;
+      padding: 5px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .statsLink:hover{ border-color: rgba(123,223,242,0.45); color: #7bdff2; }
+
+    /* ===== v29: 手机端把 AI 助教与使用统计收进顶部可滑动操作区 ===== */
+    /* 桌面端：容器不显示，statsDock / aiTab 保持覆盖在画面上的原样式 */
+    .mobileDock{ display: none; }
+    @media (max-width: 900px){
+      .mobileDock{ display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
+      /* 统计：从画面浮层变成操作区内的普通区块，展开卡片随操作区一起滚动 */
+      .mobileDock .statsDock{ position: static; align-items: stretch; pointer-events: auto; }
+      .mobileDock .statsBadge{ width: 100%; justify-content: space-around; }
+      .mobileDock .statsCard{ width: 100%; }
+      /* AI 入口：从画面右下悬浮胶囊变成操作区内的整宽按钮 */
+      .mobileDock .aiTab{
+        position: static;
+        transform: none;
+        writing-mode: horizontal-tb;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 11px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(123,223,242,0.36);
+        box-shadow: none;
+        letter-spacing: 1px;
+      }
+    }
 
     /* ===== Mobile (H5) responsive layout ===== */
     @media (max-width: 900px){
       body{ flex-direction: column; }
+      /* 手机地址栏收起/展开时用 dvh 跟随可视高度，单靠 height:100% 会在底部留白 */
+      html, body{ height: 100dvh; }
       /* v27: 手机上不需要“扫码玩”，直接隐藏二维码浮窗与侧边标签，避免遮挡画面 */
       .qrFloat, .qrTab{ display: none !important; }
       .sidebar{
@@ -597,11 +680,33 @@
       .viewport{ flex: 1 1 auto; min-height: 0; }
       .watermark{ right: 10px; left: auto; }
     }
+    /* 手机横屏：上下布局只剩 ~200px 画面高度，改回左右布局 */
+    @media (max-width: 900px) and (orientation: landscape){
+      body{ flex-direction: row; }
+      .sidebar{
+        width: min(340px, 46vw);
+        max-height: none;
+        padding: 12px 12px;
+        border-right: 1px solid rgba(255,255,255,0.08);
+        border-bottom: none;
+      }
+      .title{ font-size: 17px; margin-bottom: 6px; }
+      .dvScope canvas{ height: 88px; }
+      /* v28: 横屏高度只有 ~390px，信息栏压成单行，把高度尽量留给画面 */
+      .hud{ padding: 5px 12px; gap: 4px 12px; }
+      .hud .status{ flex: 1 1 auto; }
+      .hud .msg{ font-size: 12px; }
+      .telemetry{ gap: 12px; font-size: 12px; }
+    }
     @media (max-width: 520px){
-      .btnRow{ flex-wrap: wrap; }
-      .btn{ flex: 1 1 48%; }
-      .speedRow{ flex-wrap: wrap; }
-      .speedBtn{ flex: 1 1 30%; }
+      /* 说明文字折叠后三键已在首屏，不再吸底（吸底会压住 Δv 放大镜） */
+      .btn{ padding: 11px 8px; font-size: 13px; }
+      .speedRow{ gap: 8px; }
+      /* v28: 固定信息栏在手机上折成两行（状态一行、遥测一行），尽量少占画面高度 */
+      .hud{ padding: 6px 10px; gap: 3px 10px; }
+      .hud .status{ flex: 1 1 100%; }
+      .hud .msg{ font-size: 12px; }
+      .telemetry{ width: 100%; margin-left: 0; justify-content: space-between; gap: 8px; font-size: 13px; }
       .qrPanel{ grid-template-columns: 1fr; }
       #gameQr, #courseQr{ width: 168px; height: 168px; }
       .qrHint{ max-width: 100%; }
@@ -611,6 +716,15 @@
       .statsBadge .statItem b{ font-size: 13px; }
       .statsBadge .statItem i{ font-size: 9px; }
       .statsBadge .statSep{ height: 18px; }
+    }
+
+    /* 矮屏手机（iPhone SE 等 640/667 高）：侧栏多分一点高度并压缩留白，保证放大镜与三个主按钮在首屏 */
+    @media (max-width: 520px) and (max-height: 700px){
+      .sidebar{ max-height: 62dvh; padding: 12px 12px; }
+      .title{ font-size: 17px; margin-bottom: 6px; }
+      .controlGrid{ margin-bottom: 8px; }
+      .dvScope{ padding: 7px 8px 6px; margin-bottom: 8px; }
+      .dvScope canvas{ height: 92px; }
     }
 
     /* ===== v26: AI 助教侧栏（需求二） ===== */
@@ -731,6 +845,42 @@
       cursor: pointer;
     }
     .aiChip:hover{ background: rgba(123,223,242,0.2); }
+    .aiResume{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 9px;
+      border-radius: 10px;
+      border: 1px solid rgba(123,223,242,0.28);
+      background: rgba(123,223,242,0.08);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .aiResume[hidden]{ display: none; }
+    .aiResumeText{ flex: 1 1 auto; min-width: 0; }
+    .aiResumeBtn{
+      border: 1px solid rgba(123,223,242,0.45);
+      background: rgba(123,223,242,0.16);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .aiResumeBtn:hover{ background: rgba(123,223,242,0.28); }
+    .aiResumeDrop{
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 2px 4px;
+    }
+    .aiResumeDrop:hover{ color: var(--text); }
     .aiLog{ display: flex; flex-direction: column; gap: 10px; }
 
     .aiMsg{ display: flex; flex-direction: column; gap: 4px; }
@@ -753,6 +903,62 @@
       font-size: 12px;
     }
     .aiMsg.err .bubble{ border-color: rgba(255,90,90,0.4); color: rgba(255,190,190,0.95); }
+
+    /* 思考等待：三个点跑马灯 */
+    .aiMsg.typing .bubble{
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 11px 12px;
+      background: rgba(123,223,242,0.08);
+      border-color: rgba(123,223,242,0.28);
+    }
+    .aiMsg.typing .dot{
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(123,223,242,0.95);
+      animation: aiDotBounce 1.2s infinite ease-in-out;
+    }
+    .aiMsg.typing .dot:nth-child(2){ animation-delay: .16s; }
+    .aiMsg.typing .dot:nth-child(3){ animation-delay: .32s; }
+    .aiMsg.typing .typingLabel{ margin-left: 6px; font-size: 11px; color: var(--muted); }
+    @keyframes aiDotBounce{
+      0%, 80%, 100%{ opacity: .25; transform: translateY(0) scale(.85); }
+      40%{ opacity: 1; transform: translateY(-3px) scale(1); }
+    }
+
+    /* 模型思考过程（reasoning_content 流式） */
+    .aiReason{
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.035);
+    }
+    .aiReason summary{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+    .aiReason summary::-webkit-details-marker{ display: none; }
+    .aiReason summary b{ color: rgba(255,255,255,0.8); font-size: 10.5px; font-weight: 800; }
+    .aiReason summary span{ margin-left: auto; font-size: 9.5px; }
+    .aiReason[open] summary{ border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .aiReasonBody{
+      max-height: 196px;
+      overflow-y: auto;
+      padding: 8px 10px;
+      font-size: 11px;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.6);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
 
     .aiThink{
       flex: 0 0 auto;
@@ -931,12 +1137,15 @@
   <aside class="sidebar">
     <h1 class="title">中国空间站交会对接小游戏</h1>
     
-    <p class="intro">游戏说明：你在地面指挥交会对接任务，须选取合适的初始相对速度，让神舟飞船抵近中国空间站，进入绿色框视为任务成功，飞出红色框视为任务失败，加油！</p>
+    <details class="helpBox" id="helpBox" open>
+      <summary>游戏说明与操作方法</summary>
+      <p class="intro">游戏说明：你在地面指挥交会对接任务，须选取合适的初始相对速度，让神舟飞船抵近中国空间站，进入绿色框视为任务成功，撞上空间站或飞出红色框视为任务失败，加油！</p>
 <p class="subtitle">
       默认 4 倍速，可在运行中切换 1×/2×/4×/8×倍速。<b>点击数值可直接输入</b>（量程 ±0.20，可精确到 0.01）。
       支持多次脉冲机动（课件里的 4~5 次跳跃）：<b>暂停</b>后改参数，再点“执行脉冲机动”，飞船从当前位置继续跳，轨迹保留不清零；<b>重置位置</b>则回到起点重来。
       <b>手动缩放</b>：点 −/＋ 或在画面上滚动滚轮即可固定视角倍率，点“自适应”恢复随距离自动缩放。
     </p>
+    </details>
 
     <div class="controlGrid">
       <div class="control">
@@ -944,7 +1153,7 @@
           <div class="label smallInitLabel" title="初始径向速度 vx0">径向 vx0</div>
           <div class="value editable" id="vxVal" title="点击可直接输入数值">0.00</div>
         </div>
-        <input id="vx" type="range" min="-0.2" max="0.2" step="0.01" value="0.2">
+        <input id="vx" type="range" min="-0.2" max="0.2" step="0.01" value="0">
         <div class="tickRow" aria-hidden="true"><span>-0.2</span><span>0</span><span>+0.2</span></div>
       </div>
 
@@ -983,57 +1192,83 @@
       <button class="speedBtn" id="zoomInBtn" title="放大视角（也可在画面上滚动滚轮）">＋</button>
       <button class="speedBtn active" id="zoomAutoBtn" title="恢复随距离自动缩放">自适应</button>
     </div>
+
+    <!-- v29: 手机端把「AI 助教」与「使用统计」收进顶部可滑动操作区（由 JS 按断点搬入），不再压住飞船画面 -->
+    <div class="mobileDock" id="mobileDock"></div>
 </aside>
 
   <main class="viewport">
+    <!-- v28: 状态/遥测改成画面顶部的固定栏，不再压在两艘飞船上 -->
     <div class="hud" id="hud">
       <div class="status">
         <div class="badge" id="statusBadge" style="border-color: rgba(255, 255, 255, 0.55);"><span class="dot" id="statusDot" style="background: rgba(255, 255, 255, 0.55);"></span><span id="statusText">STANDBY</span></div>
-        <div class="value" id="msgText" style="color: rgba(255,255,255,0.72); font-size:14px; border:0; background:transparent;"></div>
+        <div class="msg" id="msgText"></div>
       </div>
       <div class="telemetry">
-        <div class="k">Rel x (径向)</div><div id="teleX">0.0</div>
-        <div class="k">Rel y (横向)</div><div id="teleY">200.0</div>
-        <div class="k">对接距离</div><div id="teleDist">200.0</div>
+        <div class="kv"><span class="k">Rel x (径向)</span><span id="teleX">0.0</span></div>
+        <div class="kv"><span class="k">Rel y (横向)</span><span id="teleY">200.0</span></div>
+        <div class="kv"><span class="k">对接距离</span><span id="teleDist">200.0</span></div>
       </div>
     </div>
-    <canvas id="c" width="2344" height="1658" style="width: 1172px; height: 829px;"></canvas>
+    <div class="stage" id="stage">
+      <canvas id="c" width="2344" height="1658" style="width: 1172px; height: 829px;"></canvas>
 
-    <!-- v25: 项目运行数据（需求一）——只展示服务端权威统计值，离线时显示"离线模式" -->
-    <div class="statsDock" id="statsDock">
-      <button class="statsBadge" id="statsBadge" type="button" aria-expanded="false" aria-controls="statsCard" title="查看项目运行数据与统计口径">
-        <span class="statItem"><b id="statUV">—</b><i>累计使用</i></span>
-        <span class="statSep"></span>
-        <span class="statItem"><b id="statTerm">—</b><i>本学期</i></span>
-        <span class="statSep"></span>
-        <span class="statItem"><b id="statToday">—</b><i>今日</i></span>
-        <span class="statState" id="statState" hidden>离线模式</span>
-      </button>
+      <!-- v25: 项目运行数据（需求一）——只展示服务端权威统计值，离线时显示"离线模式" -->
+      <div class="statsDock" id="statsDock">
+        <button class="statsBadge" id="statsBadge" type="button" aria-expanded="false" aria-controls="statsCard" title="查看项目运行数据与统计口径">
+          <span class="statItem"><b id="statUV">—</b><i>累计使用</i></span>
+          <span class="statSep"></span>
+          <span class="statItem"><b id="statTerm">—</b><i>本学期</i></span>
+          <span class="statSep"></span>
+          <span class="statItem"><b id="statToday">—</b><i>今日</i></span>
+          <span class="statState" id="statState" hidden>离线模式</span>
+        </button>
 
-      <section class="statsCard" id="statsCard" hidden>
-        <h3>项目运行数据</h3>
-        <p class="cardSub">数字只来自服务端统计接口，页面不做本地累计；本地打开或断网时不显示推测值。</p>
-        <div class="statsGrid">
-          <div class="cell"><b id="cardUV">—</b><span>累计使用人数</span></div>
-          <div class="cell"><b id="cardTerm">—</b><span>本学期</span></div>
-          <div class="cell"><b id="cardToday">—</b><span>今日</span></div>
-          <div class="cell"><b id="cardCompletes">—</b><span>完成对接人次</span></div>
-          <div class="cell"><b id="cardAvg">—</b><span>平均尝试次数</span></div>
-          <div class="cell"><b id="cardPv">—</b><span>累计访问</span></div>
-        </div>
-        <ul class="statsList">
-          <li><em>统计口径</em><span id="cardCaliber">—</span></li>
-          <li><em>去重规则</em><span>同一设备随机 ID 去重；不采集姓名、学号、手机号与 IP 明文</span></li>
-          <li><em>数据来源</em><span>服务端 /api/stats 权威值（非本地存储自增，原始日志可导出审计）</span></li>
-          <li><em>连接状态</em><span id="cardState">—</span></li>
-        </ul>
-        <div class="statsFoot">
-          <span class="updated" id="cardUpdated">—</span>
-          <button class="statsCopy" id="statsCopy" type="button">复制口径说明</button>
-        </div>
-      </section>
+        <section class="statsCard" id="statsCard" hidden>
+          <h3>项目运行数据</h3>
+          <p class="cardSub">数字只来自服务端统计接口，页面不做本地累计；本地打开或断网时不显示推测值。</p>
+          <div class="statsGrid">
+            <div class="cell"><b id="cardUV">—</b><span>累计使用人数</span></div>
+            <div class="cell"><b id="cardTerm">—</b><span>本学期</span></div>
+            <div class="cell"><b id="cardToday">—</b><span>今日</span></div>
+            <div class="cell"><b id="cardCompletes">—</b><span>完成对接人次</span></div>
+            <div class="cell"><b id="cardAvg">—</b><span>平均尝试次数</span></div>
+            <div class="cell"><b id="cardPv">—</b><span>累计访问</span></div>
+          </div>
+          <h4 class="secTitle">近 12 周使用趋势</h4>
+          <div class="trendBox">
+            <canvas id="trendChart" width="620" height="192" aria-label="近 12 周使用趋势图"></canvas>
+            <div class="trendLegend">
+              <span><i style="background:#7bdff2"></i>周使用人数</span>
+              <span><i style="background:#7ee2a8"></i>完成对接人次</span>
+              <span class="trendRate" id="trendRate">对接完成率 —</span>
+            </div>
+          </div>
+          <h4 class="secTitle">AI 助教应用情况（“人工智能+”佐证）</h4>
+          <div class="statsGrid aiGrid">
+            <div class="cell"><b id="cardAiUv">—</b><span>AI 使用人数</span></div>
+            <div class="cell"><b id="cardAiReq">—</b><span>AI 提问数</span></div>
+            <div class="cell"><b id="cardAiAdopt">—</b><span>建议采纳数</span></div>
+            <div class="cell"><b id="cardAiTools">—</b><span>工具调用数</span></div>
+          </div>
+          <ul class="statsList">
+            <li><em>统计口径</em><span id="cardCaliber">—</span></li>
+            <li><em>去重规则</em><span>同一设备随机 ID 去重；清除浏览器数据或更换设备将计为新设备，累计人数可能略高于真实人数；不采集姓名、学号、手机号与 IP 明文</span></li>
+            <li><em>数据来源</em><span>服务端 /api/stats 权威值（非本地存储自增，原始日志可导出 CSV 审计）</span></li>
+            <li><em>连接状态</em><span id="cardState">—</span></li>
+          </ul>
+          <div class="statsFoot">
+            <span class="updated" id="cardUpdated">—</span>
+            <button class="statsCopy" id="statsCopy" type="button">复制口径说明</button>
+          </div>
+          <div class="statsActions" id="statsActions" hidden>
+            <a class="statsLink" id="csvLink" href="/api/events.csv" target="_blank" rel="noopener">导出原始日志 CSV</a>
+            <a class="statsLink" id="snapLink" href="/api/stats/snapshot" target="_blank" rel="noopener">申报数据快照</a>
+          </div>
+        </section>
+      </div>
+      <div class="watermark">中国空间站交会对接</div>
     </div>
-    <div class="watermark">中国空间站交会对接</div>
   </main>
 
   <!-- v27: 二维码浮窗，可收起到左侧边缘 -->
@@ -1065,6 +1300,11 @@
         <button class="aiChip" type="button" data-q="同样的参数，为什么换倍速结果不一样？">倍速差异</button>
         <button class="aiChip" type="button" data-q="vx0 和 vy0 分别控制什么？">vx0 / vy0 含义</button>
       </div>
+      <div class="aiResume" id="aiResume" hidden>
+        <span class="aiResumeText" id="aiResumeText">上次对话</span>
+        <button class="aiResumeBtn" id="aiResumeLoad" type="button">加载上次对话</button>
+        <button class="aiResumeDrop" id="aiResumeDrop" type="button" aria-label="忽略上次对话" title="忽略（不删除记录）">×</button>
+      </div>
       <div class="aiLog" id="aiLog"></div>
     </div>
 
@@ -1085,7 +1325,7 @@
   <script>
     const state = {
       n: 1.144035952968024e-03,
-      uiVx0: 0.2,
+      uiVx0: 0,
       uiVy0: 0,
       zoom: 1,
       zoomTarget: 1,
@@ -1100,9 +1340,10 @@
       margin: 50,
       // 固定"世界坐标系"尺寸（与屏幕像素无关），确保不同屏幕同参数同结果
       world: { w: 800, h: 600 },
-      // 对接判定框（世界坐标 m）：沿航向 y 方向宽 w，径向 x 方向高 h。
-      // 高度略大于天和核心舱照片高度，宽度更大，便于飞船沿横向真正抵近。
-      targetBox: { w: 100, h: 40 },
+      // 对接判定框（世界坐标 m）：沿航向 y 方向宽 w，径向 x 方向高 h，
+      // cy = 框中心相对端口（原点）的前向偏移，+y 为来船方向（空间站前方）。
+      // cy = w / 2：框的后缘（靠端口那一侧）与端口平面齐平，框体整体落在端口外侧。
+      targetBox: { w: 10, h: 10, cy: 5 },
       simTime: 0,
       active: false,
       paused: false,
@@ -1339,22 +1580,37 @@
 
       function normalize(data) {
         data = data || {};
+        const ai = data.ai || {};
         return {
           uv: pickNum(data, ["uv", "total_uv", "totalUv"]),
           termUv: pickNum(data, ["termUv", "term_uv", "thisTermUv", "this_term_uv"]),
           todayUv: pickNum(data, ["todayUv", "today_uv"]),
           pv: pickNum(data, ["pv", "total_pv", "totalPv"]),
           completes: pickNum(data, ["completes", "success", "successes"]),
+          successUv: pickNum(data, ["successUv", "success_uv"]),
           avgAttempts: pickNum(data, ["avg_attempts", "avgAttempts"]),
+          ai: {
+            visitors: pickNum(ai, ["visitors"]),
+            requests: pickNum(ai, ["requests"]),
+            adopted: pickNum(ai, ["adopted"]),
+            toolCalls: pickNum(ai, ["toolCalls"]),
+          },
+          trend: Array.isArray(data.trend) ? data.trend : [],
           caliber: data.caliber || "",
           updatedAt: data.updatedAt || data.updated_at || null,
         };
       }
 
-      const DEFAULT_CALIBER = "累计=上线以来去重设备数；本学期=当前学期去重设备数；今日=统计服务器当日去重设备数。";
+      const DEFAULT_CALIBER = "累计=上线以来去重设备数；本学期=当前学期去重设备数；今日=统计服务器当日去重设备数。去重基于浏览器设备级随机 ID，清除浏览器数据或更换设备将计为新设备，累计人数可能略高于真实人数。";
+
+      function completionRate(s) {
+        if (s.uv == null || s.uv <= 0 || s.successUv == null) return null;
+        return (s.successUv * 100 / s.uv).toFixed(1) + "%";
+      }
 
       function caliberText(stats, cachedAt) {
         const s = stats || normalize({});
+        const ai = s.ai || {};
         const lines = [
           "【项目运行数据说明卡】",
           "项目：中国空间站交会对接小游戏（第4章 相对运动 · CW 近程交会）",
@@ -1364,10 +1620,16 @@
           "今日使用人数：" + fmtNum(s.todayUv),
           "累计访问（PV）：" + fmtNum(s.pv),
           "完成对接人次：" + fmtNum(s.completes),
+          "完成对接人数：" + fmtNum(s.successUv),
+          "对接完成率：" + (completionRate(s) || "—"),
           "平均尝试次数：" + fmtAvg(s.avgAttempts),
+          "AI 助教使用人数：" + fmtNum(ai.visitors),
+          "AI 提问数：" + fmtNum(ai.requests),
+          "AI 建议采纳数：" + fmtNum(ai.adopted),
+          "AI 工具调用数（CW 求解器取数）：" + fmtNum(ai.toolCalls),
           "统计口径：" + (s.caliber || DEFAULT_CALIBER),
-          "去重规则：同一设备随机 ID 去重，不采集姓名、学号、手机号与 IP 明文。",
-          "数据来源：服务端 /api/stats 权威值，原始事件日志可导出 CSV 审计。",
+          "去重规则：同一设备随机 ID 去重；清除浏览器数据或更换设备将计为新设备，累计人数可能略高于真实人数；不采集姓名、学号、手机号与 IP 明文。",
+          "数据来源：服务端 /api/stats 权威值，原始事件日志可导出 CSV（/api/events.csv）审计；另有一页纸数据快照（/api/stats/snapshot）可直接打印进申报书。",
           "数据更新时间：" + fmtTime(s.updatedAt) + (cachedAt ? "（缓存于 " + fmtTime(cachedAt) + "）" : ""),
           "渠道标记：" + source,
         ];
@@ -1379,17 +1641,86 @@
         if (node) node.textContent = text;
       }
 
+      function drawTrend(rows) {
+        const cv = document.getElementById("trendChart");
+        if (!cv || !cv.getContext) return;
+        const ctx = cv.getContext("2d");
+        const W = cv.width, H = cv.height;
+        ctx.clearRect(0, 0, W, H);
+        const data = (rows || []).slice(-12);
+        const hasAny = data.some(function (r) { return (r && (r.uv || r.completes)); });
+        if (!data.length || !hasAny) {
+          ctx.fillStyle = "rgba(255,255,255,0.35)";
+          ctx.font = "22px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(data.length ? "近 12 周暂无使用记录" : "暂无趋势数据", W / 2, H / 2 + 8);
+          return;
+        }
+        const padL = 10, padR = 10, padT = 30, padB = 34;
+        const iw = W - padL - padR, ih = H - padT - padB;
+        let maxV = 1;
+        data.forEach(function (r) {
+          maxV = Math.max(maxV, Number(r.uv) || 0, Number(r.completes) || 0);
+        });
+        // 柱：周使用人数
+        const step = iw / data.length;
+        const bw = Math.min(34, step * 0.52);
+        ctx.textAlign = "center";
+        data.forEach(function (r, i) {
+          const cx = padL + step * (i + 0.5);
+          const v = Number(r.uv) || 0;
+          const bh = (v / maxV) * ih;
+          ctx.fillStyle = "rgba(123,223,242,0.75)";
+          if (v > 0) ctx.fillRect(cx - bw / 2, padT + ih - bh, bw, bh);
+        });
+        // 线：完成对接人次
+        ctx.strokeStyle = "#7ee2a8";
+        ctx.fillStyle = "#7ee2a8";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        data.forEach(function (r, i) {
+          const cx = padL + step * (i + 0.5);
+          const cy = padT + ih - ((Number(r.completes) || 0) / maxV) * ih;
+          if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
+        });
+        ctx.stroke();
+        data.forEach(function (r, i) {
+          const cx = padL + step * (i + 0.5);
+          const cy = padT + ih - ((Number(r.completes) || 0) / maxV) * ih;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 3.2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        // 轴标签：首/末周 + 峰值
+        ctx.fillStyle = "rgba(255,255,255,0.45)";
+        ctx.font = "18px sans-serif";
+        const fmtWeek = function (w) { return typeof w === "string" ? w.slice(5) : ""; };
+        ctx.textAlign = "left";
+        ctx.fillText(fmtWeek(data[0].week), padL, H - 8);
+        ctx.textAlign = "right";
+        ctx.fillText(fmtWeek(data[data.length - 1].week), W - padR, H - 8);
+        ctx.fillText("峰值 " + maxV, W - padR, padT - 10);
+      }
+
       function renderOffline(reason) {
         const badge = document.getElementById("statsBadge");
         if (badge) badge.classList.add("isOffline");
         const stateEl = document.getElementById("statState");
         if (stateEl) { stateEl.hidden = false; stateEl.textContent = "离线模式"; }
+        const actions = document.getElementById("statsActions");
+        if (actions) actions.hidden = true;
         setText("cardUV", "—");
         setText("cardTerm", "—");
         setText("cardToday", "—");
         setText("cardCompletes", "—");
         setText("cardAvg", "—");
         setText("cardPv", "—");
+        setText("cardAiUv", "—");
+        setText("cardAiReq", "—");
+        setText("cardAiAdopt", "—");
+        setText("cardAiTools", "—");
+        setText("trendRate", "对接完成率 —");
+        drawTrend([]);
         setText("cardCaliber", DEFAULT_CALIBER);
         setText("cardState", reason || "未连接数据服务，不显示数字");
         setText("cardUpdated", "未连接数据服务");
@@ -1412,6 +1743,18 @@
         setText("cardCompletes", fmtNum(s.completes));
         setText("cardAvg", fmtAvg(s.avgAttempts));
         setText("cardPv", fmtNum(s.pv));
+        // AI 助教用量（需求二佐证）+ 完成率 + 周趋势
+        setText("cardAiUv", fmtNum(s.ai.visitors));
+        setText("cardAiReq", fmtNum(s.ai.requests));
+        setText("cardAiAdopt", fmtNum(s.ai.adopted));
+        setText("cardAiTools", fmtNum(s.ai.toolCalls));
+        const rate = completionRate(s);
+        setText("trendRate", rate
+          ? "对接完成率 " + rate + "（" + fmtNum(s.successUv) + "/" + fmtNum(s.uv) + "）"
+          : "对接完成率 —");
+        drawTrend(s.trend);
+        const actions = document.getElementById("statsActions");
+        if (actions) actions.hidden = !canReport;
         setText("cardCaliber", s.caliber || DEFAULT_CALIBER);
         setText("cardState", cachedAt
           ? "显示缓存值（" + fmtTime(cachedAt) + "），当前未连接数据服务"
@@ -1610,6 +1953,7 @@
     const AI_TUTOR = (function () {
       // ---------------- 常量 ----------------
       const API_CHAT = "/api/ai/chat";
+      const API_STREAM = "/api/ai/chat/stream";
       const API_HEALTH = "/api/ai/health";
       const CHAT_TIMEOUT = 45000;
       const MAX_ROUNDS = 4;        // 一次提问最多几个模型回合
@@ -1646,7 +1990,8 @@
         lastRec: null,
         lastRecObj: "robust",
         turnNo: 0,
-        toolCount: 0
+        toolCount: 0,
+        chatMsgs: []           // 本机留存的对话气泡（刷新后可「加载上次对话」）
       };
 
       // ---------------- 基础工具 ----------------
@@ -1692,8 +2037,9 @@
           n: state.n,
           x0: x0,
           y0: y0,
-          rw: state.targetBox.w / 2,   // 对接框沿航向半宽 50 m
-          rh: state.targetBox.h / 2,   // 对接框径向半高 20 m
+          rw: state.targetBox.w / 2,   // 对接框沿航向半宽 5 m
+          rh: state.targetBox.h / 2,   // 对接框径向半高 5 m
+          cy: state.targetBox.cy,      // 框中心前向偏移（= w/2，后缘贴端口）
           bx: state.world.h / 2,       // 径向边界 |x| <= 300
           by: state.world.w / 2,       // 沿航向边界 |y| <= 400
           base: state.baseTimeScale
@@ -1719,7 +2065,7 @@
           E: 6 * n * x0 + 3 * vy0,
           F: 6 * x0 + 4 * vy0 / n,
           G: 2 * vx0 / n,
-          rw: s.rw, rh: s.rh, bx: s.bx, by: s.by, base: s.base,
+          rw: s.rw, rh: s.rh, cy: s.cy, bx: s.bx, by: s.by, base: s.base,
           x0: x0, y0: y0
         };
       }
@@ -1732,10 +2078,10 @@
         const p = posAt(c, t);
         return Math.sqrt(p.x * p.x + p.y * p.y);
       }
-      // 矩形对接框判定（与画面 insideTargetBox 同一口径）
+      // 矩形对接框判定（与画面 insideTargetBox 同一口径）：框中心在 y = c.cy
       function inBoxAt(c, t) {
         const p = posAt(c, t);
-        return Math.abs(p.x) <= c.rh && Math.abs(p.y) <= c.rw;
+        return Math.abs(p.x) <= c.rh && Math.abs(p.y - c.cy) <= c.rw;
       }
 
       function table() {
@@ -1832,7 +2178,7 @@
             boundT = tt;
             boundAxis = Math.abs(y) > c.by ? "y" : "x";
           }
-          if (inFirst < 0 && Math.abs(x) <= c.rh && Math.abs(y) <= c.rw) inFirst = tt;
+          if (inFirst < 0 && Math.abs(x) <= c.rh && Math.abs(y - c.cy) <= c.rw) inFirst = tt;
           if (tm1 >= 0 && dm1 < dm2 && dm1 <= d && dm1 < near) cands.push(tm1);
           tm2 = tm1; dm2 = dm1; tm1 = tt; dm1 = d;
         }
@@ -1869,7 +2215,7 @@
         };
       }
 
-      // 逐倍速按真实帧长采样（严格复刻 tick 的顺序：先累加时间→算位置→先判成功再判越界）
+      // 逐倍速按真实帧长采样（严格复刻 tick 的顺序：先累加时间→算位置→先判成功→再判撞击→再判越界）
       function simulate(c, mult) {
         const frame = ROUND_FRAME * c.base * mult;
         const maxF = Math.ceil(T_LIMIT / frame) + 2;
@@ -1881,8 +2227,11 @@
           const p = posAt(c, t);
           const d = Math.sqrt(p.x * p.x + p.y * p.y);
           lastT = t; lastD = d;
-          if (Math.abs(p.x) <= c.rh && Math.abs(p.y) <= c.rw) {
+          if (Math.abs(p.x) <= c.rh && Math.abs(p.y - c.cy) <= c.rw) {
             return { docks: true, t: t, d: d, reason: "docked" };
+          }
+          if (window.TIANGONG && typeof window.TIANGONG.spritesCollide === "function" && window.TIANGONG.spritesCollide(p.x, p.y)) {
+            return { docks: false, t: t, d: d, reason: "collision", axis: "" };
           }
           if (Math.abs(p.y) > c.by || Math.abs(p.x) > c.bx) {
             return { docks: false, t: t, d: d, reason: "out_of_boundary", axis: Math.abs(p.y) > c.by ? "y" : "x" };
@@ -2067,7 +2416,7 @@
             x_m: r2(mid.x), y_m: r2(mid.y), distance_m: r2(Math.hypot(mid.x, mid.y)),
             can_burn_again: !!canContinueBurn()
           } : null,
-          docking_box_m: { w: state.targetBox.w, h: state.targetBox.h },
+          docking_box_m: { w: state.targetBox.w, h: state.targetBox.h, center_offset_y: state.targetBox.cy },
           boundary_m: { x: s.bx, y: s.by },
           time_limit_s: T_LIMIT
         };
@@ -2217,7 +2566,8 @@
       // ---------------- 消息与推荐卡 ----------------
       const WHO = { user: "学生", ai: "AI 助教", note: "求解器实测", err: "系统提示" };
 
-      function pushMsg(role, text) {
+      // noWho = true 时不渲染上方的小标题（只留气泡）
+      function pushMsg(role, text, noWho) {
         if (!refs) return null;
         const box = document.createElement("div");
         box.className = "aiMsg " + role;
@@ -2227,11 +2577,141 @@
         const bub = document.createElement("div");
         bub.className = "bubble";
         bub.textContent = String(text == null ? "" : text);
-        box.appendChild(who);
+        if (!noWho) box.appendChild(who);
         box.appendChild(bub);
         refs.log.appendChild(box);
         scrollLog();
         return box;
+      }
+
+      // ---------------- 对话留存（只存本机 localStorage，不上传） ----------------
+      // 刷新页面后 st.history 会丢，这里留一份最近的气泡 + 上下文轮次，供用户点「加载上次对话」恢复。
+      const CHAT_KEY = "tg_ai_chat_v1";
+      const CHAT_KEEP = 20;        // 最多留 20 条气泡
+
+      function readSavedChat() {
+        try {
+          const raw = localStorage.getItem(CHAT_KEY);
+          if (!raw) return null;
+          const d = JSON.parse(raw);
+          if (!d || !Array.isArray(d.msgs) || !d.msgs.length) return null;
+          return d;
+        } catch (e) { return null; }
+      }
+
+      function saveChat() {
+        try {
+          localStorage.setItem(CHAT_KEY, JSON.stringify({
+            ts: Date.now(),
+            msgs: st.chatMsgs.slice(-CHAT_KEEP),
+            history: st.history.slice(-12)
+          }));
+        } catch (e) {}
+      }
+
+      // 记一条气泡并落盘；同一次提问里的流式增量不单独记，只在整轮结束时记最终正文
+      function recordMsg(role, text) {
+        st.chatMsgs.push({ role: role, text: String(text == null ? "" : text) });
+        if (st.chatMsgs.length > CHAT_KEEP) st.chatMsgs.splice(0, st.chatMsgs.length - CHAT_KEEP);
+        saveChat();
+      }
+
+      function showResume(d) {
+        if (!refs || !refs.resume) return;
+        const n = (d.msgs || []).length;
+        let when = "";
+        try {
+          when = new Date(d.ts).toLocaleString("zh-CN", { hour12: false });
+        } catch (e) {}
+        refs.resumeText.textContent = "上次对话 · " + n + " 条" + (when ? " · " + when : "");
+        refs.resume.hidden = false;
+      }
+
+      function hideResume() {
+        if (refs && refs.resume) refs.resume.hidden = true;
+      }
+
+      function loadSavedChat() {
+        const d = readSavedChat();
+        if (!d || !refs) return;
+        const msgs = d.msgs.slice(-CHAT_KEEP);
+        refs.log.innerHTML = "";
+        st.chatMsgs = [];
+        // 提示放在最前面（不带“求解器实测”小标题），下面是恢复出来的问答
+        pushMsg("note", "已加载上次对话（" + msgs.length + " 条），可以直接接着问。", true);
+        for (let i = 0; i < msgs.length; i++) {
+          const role = msgs[i].role === "user" ? "user" : "ai";
+          pushMsg(role, msgs[i].text);
+          st.chatMsgs.push({ role: role, text: String(msgs[i].text || "") });
+        }
+        // 上下文一起恢复：模型记得上一轮问过什么、答过什么
+        st.history = Array.isArray(d.history) ? d.history.slice(-12).filter(function (h) {
+          return h && (h.role === "user" || h.role === "assistant");
+        }).map(function (h) {
+          return { role: h.role, content: String(h.content || "") };
+        }) : [];
+        hideResume();
+        scrollLog();
+      }
+
+      // ---------------- 思考等待图案（三个点跑马灯） ----------------
+      let typingEl = null;
+
+      // 模型思考过程（reasoning）块：默认展开逐段追加，正文开始后自动折叠；用户手动点过则尊重其选择
+      function pushReason() {
+        if (!refs) return null;
+        const box = document.createElement("details");
+        box.className = "aiReason";
+        box.open = true;
+        const sum = document.createElement("summary");
+        const title = document.createElement("b");
+        title.textContent = "思考过程";
+        const meta = document.createElement("span");
+        meta.textContent = "思考中…";
+        sum.appendChild(title);
+        sum.appendChild(meta);
+        sum.addEventListener("click", function () { box.dataset.touched = "1"; });
+        const body = document.createElement("div");
+        body.className = "aiReasonBody";
+        box.appendChild(sum);
+        box.appendChild(body);
+        refs.log.appendChild(box);
+        scrollLog();
+        return { box: box, body: body, meta: meta };
+      }
+
+      function showTyping(label) {
+        if (!refs) return;
+        hideTyping();
+        const box = document.createElement("div");
+        box.className = "aiMsg ai typing";
+        const who = document.createElement("div");
+        who.className = "who";
+        who.textContent = WHO.ai;
+        const bub = document.createElement("div");
+        bub.className = "bubble";
+        for (let i = 0; i < 3; i++) {
+          const d = document.createElement("i");
+          d.className = "dot";
+          bub.appendChild(d);
+        }
+        if (label) {
+          const lab = document.createElement("span");
+          lab.className = "typingLabel";
+          lab.textContent = label;
+          bub.appendChild(lab);
+        }
+        box.appendChild(who);
+        box.appendChild(bub);
+        refs.log.appendChild(box);
+        typingEl = box;
+        if (refs.thinkMeta) refs.thinkMeta.textContent = (label || "思考中") + "…";
+        scrollLog();
+      }
+
+      function hideTyping() {
+        if (typingEl && typingEl.parentNode) typingEl.parentNode.removeChild(typingEl);
+        typingEl = null;
       }
 
       function addRow(tb, k, v, cls) {
@@ -2364,26 +2844,70 @@
         return snap;
       }
 
-      function errText(err) {
-        if (!err) return "unknown";
-        if (err.status === 503) return "服务端未配置模型密钥";
-        if (err.status === 429) return "请求过于频繁";
-        if (err.status === 502) return "上游模型服务异常";
-        if (err.name === "AbortError") return "请求超时";
-        return err.status ? ("HTTP " + err.status) : (err.message || "网络不可用");
+      // 报错一律带上上游细节：模型名、错误码、上游原始返回（服务端已截断）。
+      const ERR_CODE_CN = {
+        empty_answer: "上游返回空正文（empty_answer）",
+        stream_incomplete: "流式响应提前断开（stream_incomplete）",
+        no_key: "服务端进程里没有模型密钥（no_key）",
+        upstream_unreachable: "连不上模型网关（upstream_unreachable）",
+        upstream_read_failed: "读取上游响应失败（upstream_read_failed）",
+        bad_upstream_body: "上游返回了非 JSON 内容（bad_upstream_body）",
+        tool_budget_exhausted: "工具调用次数用尽（tool_budget_exhausted）"
+      };
+
+      function errCodeCn(code) {
+        if (!code) return "";
+        if (ERR_CODE_CN[code]) return ERR_CODE_CN[code];
+        const m = /^upstream_http_(\d+)$/.exec(code);
+        if (m) return "上游返回 HTTP " + m[1] + "（" + code + "）";
+        return code;
       }
 
-      function postChat(messages) {
+      function errText(err) {
+        if (!err) return "unknown";
+        const p = err.payload || {};
+        let head;
+        if (err.name === "AbortError") {
+          head = "请求超时（" + Math.round(CHAT_TIMEOUT / 1000) + " s 内没有响应）";
+        } else if (err.status === 503) {
+          head = "服务端未配置模型密钥";
+        } else if (err.status === 429) {
+          head = "请求过于频繁";
+        } else if (err.status === 502) {
+          head = "上游模型服务异常";
+        } else if (err.status) {
+          head = "HTTP " + err.status;
+        } else {
+          head = errCodeCn(p.code || err.code) || err.message || "网络不可用";
+        }
+
+        const lines = [];
+        if (p.reason) lines.push("原因：" + p.reason);
+        const list = Array.isArray(p.attempts) ? p.attempts : [];
+        if (list.length) {
+          for (let i = 0; i < list.length; i++) {
+            const a = list[i] || {};
+            lines.push("· " + (a.model || "模型") + " → " + (a.code || "error")
+              + (a.detail ? "：" + a.detail : ""));
+          }
+        } else if (p.code || p.detail) {
+          lines.push("· " + [p.model, p.code, p.detail].filter(Boolean).join("："));
+        }
+        if (p.retry_after) lines.push("· 建议 " + p.retry_after + " s 后再试");
+        return head + (lines.length ? "\n" + lines.join("\n") : "");
+      }
+
+      function postChat(messages, extra) {
         const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
         const timer = ctrl ? setTimeout(function () { ctrl.abort(); }, CHAT_TIMEOUT) : null;
         return fetch(API_CHAT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          body: JSON.stringify(Object.assign({
             visitor_id: TIANGONG.visitorId || "anon_local_01",
             messages: messages,
             context: ctxSnapshot()
-          }),
+          }, extra || {})),
           signal: ctrl ? ctrl.signal : undefined
         }).then(function (resp) {
           return resp.json().catch(function () { return {}; }).then(function (data) {
@@ -2401,6 +2925,113 @@
         }, function (e) {
           if (timer) clearTimeout(timer);
           throw e;
+        });
+      }
+
+      // ---------------- 流式对话（SSE） ----------------
+      // 服务端逐段回传思考过程（reasoning）与正文（delta）；工具调用在 done 事件里带回来，前端照旧在本地执行。
+      function postChatStream(messages, onDelta, onReasoning, extra) {
+        const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+        const timer = ctrl ? setTimeout(function () { ctrl.abort(); }, CHAT_TIMEOUT) : null;
+        const stop = function () { if (timer) clearTimeout(timer); };
+
+        return fetch(API_STREAM, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "text/event-stream" },
+          body: JSON.stringify(Object.assign({
+            visitor_id: TIANGONG.visitorId || "anon_local_01",
+            messages: messages,
+            context: ctxSnapshot()
+          }, extra || {})),
+          signal: ctrl ? ctrl.signal : undefined
+        }).then(function (resp) {
+          const ctype = resp.headers.get("Content-Type") || "";
+          if (!resp.ok || ctype.indexOf("text/event-stream") < 0) {
+            // 还没开流就被拒（含上游 502）：交给调用方决定是否回退到一次性请求
+            return resp.text().catch(function () { return ""; }).then(function (raw) {
+              let data = {};
+              try { data = JSON.parse(raw); } catch (e) { data = { detail: String(raw || "").slice(0, 300) }; }
+              const e = new Error(data.code || data.error || ("http_" + resp.status));
+              e.status = resp.status;
+              e.payload = data;
+              e.notStream = true;
+              throw e;
+            });
+          }
+
+          const out = { message: null, diag: null, meta: null, err: null };
+          let buf = "";
+
+          function feed(block) {
+            let ev = "message", dataLine = "";
+            const lines = block.split("\n");
+            for (let i = 0; i < lines.length; i++) {
+              const ln = lines[i];
+              if (ln.indexOf("event:") === 0) ev = ln.slice(6).trim();
+              else if (ln.indexOf("data:") === 0) dataLine += ln.slice(5).trim();
+            }
+            if (!dataLine) return;
+            let obj;
+            try { obj = JSON.parse(dataLine); } catch (e) { return; }
+            if (ev === "delta") onDelta(String(obj.delta || ""));
+            else if (ev === "reasoning") { if (onReasoning) onReasoning(String(obj.reasoning || "")); }
+            else if (ev === "done") { out.message = obj.message || null; out.diag = obj.diag || null; }
+            else if (ev === "error") out.err = obj;
+            else if (ev === "meta") out.meta = obj;
+          }
+
+          function parse(chunk) {
+            buf += chunk;
+            let i;
+            while ((i = buf.indexOf("\n\n")) >= 0) {
+              feed(buf.slice(0, i));
+              buf = buf.slice(i + 2);
+            }
+          }
+
+          function finish() {
+            stop();
+            if (buf.trim()) feed(buf);
+            if (out.err) {
+              const e = new Error(out.err.code || "stream_error");
+              e.payload = out.err;
+              throw e;
+            }
+            if (!out.message) {
+              const e = new Error("stream_incomplete");
+              e.payload = { code: "stream_incomplete", detail: "流式响应提前断开，没收到 done 事件" };
+              throw e;
+            }
+            return out;
+          }
+
+          if (!resp.body || typeof resp.body.getReader !== "function") {
+            return resp.text().then(function (all) { parse(all); return finish(); });
+          }
+          const reader = resp.body.getReader();
+          const decoder = new TextDecoder("utf-8");
+          function pump() {
+            return reader.read().then(function (r) {
+              if (r.done) return finish();
+              parse(decoder.decode(r.value, { stream: true }));
+              return pump();
+            });
+          }
+          return pump();
+        }, function (e) { stop(); throw e; });
+      }
+
+      // 一次模型回合：优先流式；只有服务端根本没有这个路由（老版本 server.py）才回退到一次性 JSON。
+      // 其它错误（502 上游异常、503 无密钥、429 限流）原样抛出，避免回退请求再撞限流、把真实错因盖掉。
+      function chatRound(messages, onDelta, onReasoning, extra) {
+        return postChatStream(messages, onDelta, onReasoning, extra).catch(function (e) {
+          const noRoute = e && e.notStream && (e.status === 404 || e.status === 405 || e.status === 501);
+          if (!noRoute) throw e;
+          return postChat(messages, extra).then(function (data) {
+            const msg = (data && data.message) || {};
+            if (msg.content) onDelta(String(msg.content));
+            return { message: msg, diag: (data && data.diag) || null };
+          });
         });
       }
 
@@ -2429,7 +3060,7 @@
         refs.modeText.textContent = st.mode === "ai" ? "AI 在线" : "规则模式";
       }
 
-      // ---------------- tool-calling 闭环 ----------------
+      // ---------------- tool-calling 闭环（流式） ----------------
       function runToolLoop(text) {
         const msgs = [];
         for (let i = 0; i < st.history.length; i++) {
@@ -2437,17 +3068,68 @@
         }
         msgs.push({ role: "user", content: text });
 
-        let round = 0, answer = "";
+        let round = 0, answer = "", streamed = "", bubble = null;
+        let reason = null, reasonChars = 0;
+        // 本轮提问的稳定 ID：同一轮里的多次工具续跑共用它，服务端按 (visitor_id, turn_id) 覆盖成最终答案
+        const turnId = (window.crypto && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : "t-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+
+        // 思考过程逐段追加（模型 reasoning_content）
+        function appendReasoning(piece) {
+          const s = String(piece || "");
+          if (!s) return;
+          hideTyping();
+          if (!reason) { reason = pushReason(); reasonChars = 0; }
+          if (!reason) return;
+          reason.body.textContent += s;
+          reason.body.scrollTop = reason.body.scrollHeight;
+          reasonChars += s.length;
+          reason.meta.textContent = "思考中 · " + reasonChars + " 字";
+          scrollLog();
+        }
+
+        // 首字到达才建气泡：本回合先出三个点，再逐段追加正文
+        function appendDelta(piece) {
+          const s = String(piece || "");
+          if (!s) return;
+          hideTyping();
+          if (reason && !reason.box.dataset.touched) reason.box.open = false;
+          if (!bubble) bubble = pushMsg("ai", "");
+          const b = bubble && bubble.querySelector(".bubble");
+          if (!b) return;
+          b.textContent += s;
+          streamed += s;
+          scrollLog();
+        }
+
         function step() {
           if (round >= MAX_ROUNDS) return Promise.resolve(answer);
           round += 1;
-          return postChat(msgs).then(function (data) {
+          streamed = "";
+          reason = null;
+          reasonChars = 0;
+          showTyping(round === 1 ? "AI 思考中" : "AI 继续思考中");
+          return chatRound(msgs, appendDelta, appendReasoning, {
+            turn_id: turnId,
+            session_id: TIANGONG.sessionId || "",
+            round: round
+          }).then(function (data) {
+            hideTyping();
+            if (reason) {
+              reason.meta.textContent = reasonChars + " 字";
+              if (!reason.box.dataset.touched) reason.box.open = false;
+            }
             const msg = (data && data.message) || {};
             const content = String(msg.content || "");
             const calls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
-            if (!calls.length) { answer = content; return answer; }
-            if (st.toolCount >= MAX_TOOL_CALLS) { answer = content; return answer; }
+            if (!calls.length || st.toolCount >= MAX_TOOL_CALLS) {
+              if (!streamed && content) pushMsg("ai", content);
+              answer = content || streamed;
+              return answer;
+            }
 
+            bubble = null; // 下一轮正文另起气泡，本轮流式内容保留
             msgs.push({ role: "assistant", content: content, tool_calls: calls });
             for (let i = 0; i < calls.length; i++) {
               const call = calls[i] || {};
@@ -2498,6 +3180,9 @@
         st.lastRecObj = "robust";
 
         pushMsg("user", text);
+        // 只有模型作答的轮次才留存（规则兜底是本地即时生成的，刷新后重新问即可）
+        if (st.mode === "ai") recordMsg("user", text);
+        hideResume();
         beginThink();
         try { TIANGONG.track("ai_chat", { mode: st.mode, turn: st.turnNo, q_len: text.length }); } catch (e) {}
 
@@ -2512,17 +3197,30 @@
         }
 
         return runToolLoop(text).then(function (answer) {
-          if (!answer) throw new Error("empty_answer");
-          pushMsg("ai", answer);
+          if (!answer) {
+            const e = new Error("empty_answer");
+            e.payload = {
+              error: "empty_answer",
+              code: "empty_answer",
+              detail: "已跑满 " + MAX_ROUNDS + " 轮（工具调用 " + st.toolCount + " 次），模型仍未产出正文。"
+                + "常见原因：推理型模型把 max_tokens 用尽、或模型名不可用。"
+            };
+            throw e;
+          }
           if (st.lastRec) pushRec(st.lastRec, st.lastRecObj);
           st.history.push({ role: "user", content: text });
           st.history.push({ role: "assistant", content: answer.slice(0, 1200) });
           if (st.history.length > 12) st.history.splice(0, st.history.length - 12);
+          recordMsg("ai", answer);
         }).catch(function (err) {
+          hideTyping();
           const status = err && err.status;
-          pushMsg("err", "AI 网关不可用（" + errText(err) + "），本轮改用规则模式：教学提示与数值仍由本地求解器给出。");
-          try { TIANGONG.track("ai_error", { status: status || 0, code: errText(err) }); } catch (e) {}
-          if (!status || status === 503 || status === 404) setMode("rule");
+          const code = (err && err.payload && err.payload.code) || (err && err.code) || "";
+          const detail = errText(err);
+          pushMsg("err", "AI 这一轮没有成功作答，改用规则兜底：教学提示与数值仍由本地求解器给出。\n\n【错误详情】\n" + detail);
+          try { TIANGONG.track("ai_error", { status: status || 0, code: code || detail.slice(0, 200) }); } catch (e) {}
+          // 空答只影响本轮，不必把整体模式降级；只有网关/密钥类错误才切规则模式
+          if (code !== "empty_answer" && (!status || status === 503 || status === 404)) setMode("rule");
           ruleAnswer(text);
         }).then(function () {
           finishThink(st.toolCount > 0
@@ -2545,6 +3243,7 @@
       // ---------------- 规则兜底（无网络也能用，数值仍来自求解器） ----------------
       function reasonCn(r) {
         if (r === "out_of_boundary") return "越界";
+        if (r === "collision") return "撞击空间站";
         if (r === "timeout") return "超时";
         if (r === "docked") return "入框";
         return r || "未知";
@@ -2649,7 +3348,7 @@
         const org = evR.ev ? evR.ev.org : resolveOrg(null);
         const ev = evR.ev || evaluate(vx, vy, org);
         const s = scene(org);
-        const boxTxt = state.targetBox.w + " m × " + state.targetBox.h + " m 对接框";
+        const boxTxt = state.targetBox.w + " m × " + state.targetBox.h + " m 对接框（后缘贴端口）";
         // 同 ruleAnswer：以是否已点火判定“中途接续”，不看位置距离
         const fromMid = !!(state.run && canContinueBurn());
         const fromTxt = fromMid ? ("（从当前位置 (" + r2(s.x0) + ", " + r2(s.y0) + ") m 接续）") : "";
@@ -2763,6 +3462,10 @@
           think: document.getElementById("aiThink"),
           thinkBody: document.getElementById("aiThinkBody"),
           thinkMeta: document.getElementById("aiThinkMeta"),
+          resume: document.getElementById("aiResume"),
+          resumeText: document.getElementById("aiResumeText"),
+          resumeLoad: document.getElementById("aiResumeLoad"),
+          resumeDrop: document.getElementById("aiResumeDrop"),
           form: document.getElementById("aiForm"),
           input: document.getElementById("aiInput"),
           send: document.getElementById("aiSend")
@@ -2808,7 +3511,20 @@
         TIANGONG.onRunFinished(onFinished);
         setMode("rule");
 
+        if (refs.resumeLoad) {
+          refs.resumeLoad.addEventListener("click", function () {
+            if (st.busy) return;
+            loadSavedChat();
+          });
+        }
+        if (refs.resumeDrop) {
+          refs.resumeDrop.addEventListener("click", hideResume);
+        }
+
         pushMsg("ai", "我是这门课的 AI 助教。轨道参数全部由浏览器里的确定性求解器计算（CW 解析解 + 0.01 网格 + 逐倍速采样校验），我只负责诊断和解释。可以直接问我「为什么总飞出去」或「推荐一组参数」。");
+        // 有上次留下的对话就提示一句，是否恢复由用户决定
+        const saved = readSavedChat();
+        if (saved) showResume(saved);
         refreshHealth();
       }
 
@@ -2823,66 +3539,16 @@
 
     const canvas = document.getElementById("c");
     const ctx = canvas.getContext("2d");
-    const viewport = document.querySelector(".viewport");
-
-
-    // 允许拖动 HUD（状态/相对速度显示框）到任意位置
-    const hud = document.getElementById("hud");
-    (function enableHudDrag(){
-      if (!hud) return;
-      let dragging = false;
-      let startX = 0, startY = 0;
-      let startLeft = 0, startTop = 0;
-      let hudW = 0, hudH = 0;
-      const clampNum = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-
-      hud.addEventListener('pointerdown', (e) => {
-        // 仅响应鼠标左键/主指针
-        if (typeof e.button === 'number' && e.button !== 0) return;
-        dragging = true;
-        hud.classList.add('dragging');
-        try { hud.setPointerCapture(e.pointerId); } catch(_){ }
-
-        const vpRect = viewport.getBoundingClientRect();
-        const rect = hud.getBoundingClientRect();
-        startX = e.clientX;
-        startY = e.clientY;
-        startLeft = rect.left - vpRect.left;
-        startTop  = rect.top  - vpRect.top;
-        hudW = rect.width;
-        hudH = rect.height;
-        e.preventDefault();
-      });
-
-      hud.addEventListener('pointermove', (e) => {
-        if (!dragging) return;
-        const vpRect = viewport.getBoundingClientRect();
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-        let left = startLeft + dx;
-        let top  = startTop  + dy;
-        left = clampNum(left, 0, Math.max(0, vpRect.width  - hudW));
-        top  = clampNum(top,  0, Math.max(0, vpRect.height - hudH));
-        hud.style.left = left + 'px';
-        hud.style.top  = top  + 'px';
-        hud.style.right = 'auto';
-        hud.style.bottom = 'auto';
-      });
-
-      const end = (e) => {
-        if (!dragging) return;
-        dragging = false;
-        hud.classList.remove('dragging');
-        try { hud.releasePointerCapture(e.pointerId); } catch(_){ }
-      };
-      hud.addEventListener('pointerup', end);
-      hud.addEventListener('pointercancel', end);
-    })();
+    const stage = document.getElementById("stage");
 
     function resizeCanvas() {
       const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      const w = viewport.clientWidth;
-      const h = viewport.clientHeight;
+      const w = stage.clientWidth;
+      const h = stage.clientHeight;
+      // 尺寸没变就不重绘（手机上 dvh 变化 / 抽屉开关会频繁触发）
+      if (w <= 0 || h <= 0) return;
+      if (canvas._cssW === w && canvas._cssH === h && canvas._dpr === dpr) return;
+      canvas._cssW = w; canvas._cssH = h; canvas._dpr = dpr;
       canvas.width = Math.floor(w * dpr);
       canvas.height = Math.floor(h * dpr);
       canvas.style.width = w + "px";
@@ -2901,7 +3567,32 @@
       }
     }
     window.addEventListener("resize", resizeCanvas);
+    // 手机上地址栏收起、侧栏 dvh 变化时不一定触发 resize，用 ResizeObserver 兜底
+    if (window.ResizeObserver) new ResizeObserver(resizeCanvas).observe(stage);
     resizeCanvas();
+
+    // 手机竖屏默认收起说明文字，把 Δv 放大镜和三个主按钮留在首屏
+    const helpBox = document.getElementById("helpBox");
+    if (helpBox && window.matchMedia("(max-width: 900px)").matches) helpBox.open = false;
+
+    // v29: 手机端把统计面板与 AI 入口搬进顶部可滑动操作区（sidebar），
+    // 桌面端保持覆盖在画面上；断点变化时自动搬回，事件监听都按 ID 绑定不受搬动影响
+    const mobileDockHome = document.getElementById("mobileDock");
+    const mqMobileDock = window.matchMedia("(max-width: 900px)");
+    function relocateMobileDock(){
+      const dock = document.getElementById("statsDock");
+      const tab = document.getElementById("aiTab");
+      if (!mobileDockHome || !dock || !tab) return;
+      if (mqMobileDock.matches){
+        if (tab.parentNode !== mobileDockHome) mobileDockHome.appendChild(tab);
+        if (dock.parentNode !== mobileDockHome) mobileDockHome.appendChild(dock);
+      } else {
+        if (dock.parentNode !== stage) stage.appendChild(dock);
+        if (tab.parentNode !== document.body) document.body.appendChild(tab);
+      }
+    }
+    relocateMobileDock();
+    if (mqMobileDock.addEventListener) mqMobileDock.addEventListener("change", relocateMobileDock);
 
     function loadImageWithFallback(primarySrc, fallbackDataUrl) {
       const img = new Image();
@@ -3056,7 +3747,10 @@
     el.vxVal.addEventListener("click", () => beginInlineEdit("vx"));
     el.vyVal.addEventListener("click", () => beginInlineEdit("vy"));
     function getView(w, h, pos) {
-      const m = state.margin;
+      // 窄屏（手机竖屏）把画布留白压到最小，让红色测控框直接“顶”着画布边，
+      // 同样一块 800×600 m 的测控范围能占满屏幕宽度，飞船随之变大。
+      const narrow = w < 640;
+      const m = narrow ? 6 : state.margin;
       const availW = Math.max(10, w - 2*m);
       const availH = Math.max(10, h - 2*m);
       const worldW = state.world.w;
@@ -3065,9 +3759,11 @@
       const baseScale = Math.min(availW / worldW, availH / worldH);
 
       // 视角自适应：飞船越靠近空间站（对接距离越小），视角越放大。
-      // 下限固定为 1（即原始比例），只放大不缩小，绝不越过原始“测控范围”。
+      // 桌面端下限固定为 1（即原始比例），只放大不缩小，绝不越过原始“测控范围”。
+      // v29: 窄屏下限提到 2 —— 允许红框出画，优先把飞船和空间站看清楚。
       const dist = pos ? Math.hypot(pos.x, pos.y) : 200;
-      state.zoomTarget = clamp(150 / Math.max(37.5, dist), 1, 4);
+      const minZoom = narrow ? 2 : 1;
+      state.zoomTarget = clamp(150 / Math.max(37.5, dist), minZoom, 4);
 
       // 手动缩放：点 −/＋ 或滚轮后进入 manual，倍率锁定在用户设定值；
       // 点“自适应”切回 auto，恢复随距离跟随。两种模式都做平滑过渡。
@@ -3079,9 +3775,29 @@
       const scale = baseScale * state.zoom;
       const boxW = worldW * scale;
       const boxH = worldH * scale;
-      const rect = { x: (w - boxW) / 2, y: (h - boxH) / 2, w: boxW, h: boxH };
-      const origin = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
-      return { w, h, scale, baseScale, rect, origin };
+
+      // v29: 窄屏放大后红框允许出画，视野中心从世界原点向“飞船与空间站的中点”平移，
+      // 并夹紧保证飞船始终留在视野内（失控飞远时也能看到它飞离）；1× 时不平移。
+      // 世界 y 轴对应画面横向，世界 x 轴对应画面纵向。
+      let centerX = 0, centerY = 0;
+      if (narrow && pos) {
+        const panT = clamp(state.zoom - 1, 0, 1);
+        centerX = pos.x * 0.5 * panT;
+        centerY = pos.y * 0.5 * panT;
+        const halfWorldX = availH / (2 * scale);
+        const halfWorldY = availW / (2 * scale);
+        const padX = Math.min(60, halfWorldX * 0.4);
+        const padY = Math.min(60, halfWorldY * 0.4);
+        centerX = clamp(centerX, pos.x - (halfWorldX - padX), pos.x + (halfWorldX - padX));
+        centerY = clamp(centerY, pos.y - (halfWorldY - padY), pos.y + (halfWorldY - padY));
+      }
+
+      const origin = { x: w / 2 + centerY * scale, y: h / 2 + centerX * scale };
+      const rect = { x: origin.x - boxW / 2, y: origin.y - boxH / 2, w: boxW, h: boxH };
+      // 窄屏上飞船贴图按世界比例只有 15 px 左右，根本看不清；这里只把小屏的“贴图”
+      // 额外放大，世界坐标（测控框 / 判定框 / 轨迹 / 判定逻辑）完全不变。
+      const spriteBoost = narrow ? clamp(740 / Math.max(320, w), 1, 1.9) : 1;
+      return { w, h, scale, baseScale, rect, origin, spriteBoost };
     }
     function mapToCanvas(x, y, view) {
       // 约定：+x 向上（径向），+y 向左（横向）
@@ -3285,25 +4001,33 @@
     function drawTargetBox(origin, scale) {
       const bw = state.targetBox.w * scale;   // 沿航向（屏幕横向）
       const bh = state.targetBox.h * scale;   // 径向（屏幕纵向）
+      // 判定框整体前移到核心舱端口外侧：世界坐标 +y 在屏幕上向左
+      const cx = origin.x - state.targetBox.cy * scale;
       ctx.save();
       ctx.strokeStyle = "rgba(90, 220, 140, 0.95)";
       ctx.lineWidth = 2;
-      ctx.strokeRect(origin.x - bw / 2, origin.y - bh / 2, bw, bh);
+      ctx.strokeRect(cx - bw / 2, origin.y - bh / 2, bw, bh);
 
-      // 四角短标，强调这是一个“横向更宽”的对接窗口
-      const c = Math.min(bw, bh) * 0.22;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(origin.x - bw / 2, origin.y - bh / 2 + c); ctx.lineTo(origin.x - bw / 2, origin.y - bh / 2); ctx.lineTo(origin.x - bw / 2 + c, origin.y - bh / 2);
-      ctx.moveTo(origin.x + bw / 2 - c, origin.y - bh / 2); ctx.lineTo(origin.x + bw / 2, origin.y - bh / 2); ctx.lineTo(origin.x + bw / 2, origin.y - bh / 2 + c);
-      ctx.moveTo(origin.x + bw / 2, origin.y + bh / 2 - c); ctx.lineTo(origin.x + bw / 2, origin.y + bh / 2); ctx.lineTo(origin.x + bw / 2 - c, origin.y + bh / 2);
-      ctx.moveTo(origin.x - bw / 2 + c, origin.y + bh / 2); ctx.lineTo(origin.x - bw / 2, origin.y + bh / 2); ctx.lineTo(origin.x - bw / 2, origin.y + bh / 2 - c);
-      ctx.stroke();
+      // 四角短标：框只有几像素时省略，避免糊成一团
+      if (Math.min(bw, bh) >= 14) {
+        const c = Math.min(bw, bh) * 0.22;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(cx - bw / 2, origin.y - bh / 2 + c); ctx.lineTo(cx - bw / 2, origin.y - bh / 2); ctx.lineTo(cx - bw / 2 + c, origin.y - bh / 2);
+        ctx.moveTo(cx + bw / 2 - c, origin.y - bh / 2); ctx.lineTo(cx + bw / 2, origin.y - bh / 2); ctx.lineTo(cx + bw / 2, origin.y - bh / 2 + c);
+        ctx.moveTo(cx + bw / 2, origin.y + bh / 2 - c); ctx.lineTo(cx + bw / 2, origin.y + bh / 2); ctx.lineTo(cx + bw / 2 - c, origin.y + bh / 2);
+        ctx.moveTo(cx - bw / 2 + c, origin.y + bh / 2); ctx.lineTo(cx - bw / 2, origin.y + bh / 2); ctx.lineTo(cx - bw / 2, origin.y + bh / 2 - c);
+        ctx.stroke();
+      }
 
       ctx.fillStyle = "rgba(90, 220, 140, 0.85)";
       ctx.font = "14px ui-sans-serif, system-ui";
-      ctx.fillText("对接判定框 " + state.targetBox.w + " m × " + state.targetBox.h + " m",
-        origin.x - bw / 2, origin.y + bh / 2 + 18);
+      // v28: 窄屏（框宽贴画布边）时按文字实际宽度居中并夹在画布内，避免右侧被裁
+      const boxLabel = "对接判定框 " + state.targetBox.w + " m × " + state.targetBox.h + " m（后缘贴端口）";
+      const labelW = ctx.measureText(boxLabel).width;
+      const viewW = ctx.canvas.clientWidth || ctx.canvas.width;
+      ctx.fillText(boxLabel, clamp(cx - labelW / 2, 8, Math.max(8, viewW - labelW - 8)),
+        origin.y + bh / 2 + 18);
       ctx.restore();
     }
 
@@ -3366,26 +4090,112 @@
       ctx.restore();
     }
 
+    // ---------------- 贴图比例基准（两环等大且同心） ----------------
+    // 两张源图的“对接环”像素位置/尺寸（按源图原始分辨率量的）：
+    //   空间站 space_station.png 574×206，左端端口环中心约 (59,112)，外径约 40 px；
+    //   飞船   spaceship.png     460×807，头部对接机构中心约 (410,398)，外径约 60 px。
+    // 两张图的分辨率基准不同（同样的“环”一张 40 px、一张 60 px），所以必须以环为锚点：
+    //   1) 尺寸：飞船贴图高度 = 空间站高度 × (807/206) × (40/60) ≈ 2.6 倍，两环屏幕直径才相等；
+    //   2) 位置：各自把“环中心”对准对接点，抵近到 0 m 时两环才会真正贴合。
+    // 两者都按同一个世界比例绘制（1 m = scale px），放大缩小时比例始终一致。
+    const STATION_H_M = 12;                 // 空间站贴图高度（m）：真实核心舱直径约 4.2 m，这里统一放大 2.7 倍便于观察
+    const STATION_RING_X_PX = 59;           // 空间站源图里端口环中心 x
+    const STATION_RING_Y_PX = 112;          // 空间站源图里端口环中心 y
+    const STATION_RING_PX = 40;             // 空间站源图里端口环的直径（px）
+    const SHIP_RING_X_PX = 410;             // 飞船源图里对接机构中心 x
+    const SHIP_RING_Y_PX = 398;             // 飞船源图里对接机构中心 y
+    const SHIP_RING_PX = 60;                // 飞船源图里对接机构的直径（px）
+
+    // ===== v30: 撞击判定 —— 飞船与空间站贴图在世界坐标下像素级重叠即任务失败 =====
+    // 判定只依赖世界坐标与贴图源图，与视图无关（不受缩放 / spriteBoost 影响），
+    // 桌面端与手机端结果一致；AI 求解器的逐帧模拟经 TIANGONG.spritesCollide
+    // 复用同一判定，保证“AI 预测的可行解”与“实际游玩结果”不打架。
+    const __maskCache = { station: null, ship: null };
+
+    function buildAlphaMask(img, w, h) {
+      try {
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        const g = c.getContext("2d", { willReadFrequently: true });
+        g.drawImage(img, 0, 0, w, h);
+        const d = g.getImageData(0, 0, w, h).data;
+        const m = new Uint8Array(w * h);
+        for (let i = 0; i < w * h; i++) m[i] = d[i * 4 + 3] > 40 ? 1 : 0;
+        return m;
+      } catch (e) { return null; }
+    }
+
+    // 两张贴图的世界坐标外接矩形（锚点 = 各自对接环中心：空间站恒在原点，飞船在 (px, py)。
+    // 世界 +y 朝画面左、+x 朝画面上，所以贴图 texX/texY=0 的边缘对应世界 y/x 的最大侧）
+    function spriteWorldRects(px, py) {
+      const stW = Math.max(1, (stationImg.naturalWidth || stationImg.width || 120));
+      const stH = Math.max(1, (stationImg.naturalHeight || stationImg.height || 60));
+      const shW = Math.max(1, (shipImg.naturalWidth || shipImg.width || 50));
+      const shH = Math.max(1, (shipImg.naturalHeight || shipImg.height || 30));
+      const stationWm = STATION_H_M * (stW / stH);   // 空间站世界宽度（y 方向）
+      const shipHm = STATION_H_M * (shH / stH) * (STATION_RING_PX / SHIP_RING_PX);  // 飞船世界高度（x 方向）
+      const shipWm = shipHm * (shW / shH);           // 飞船世界宽度（y 方向）
+      return {
+        st: {
+          yMax: (STATION_RING_X_PX / stW) * stationWm, yMin: -(1 - STATION_RING_X_PX / stW) * stationWm,
+          xMax: (STATION_RING_Y_PX / stH) * STATION_H_M, xMin: -(1 - STATION_RING_Y_PX / stH) * STATION_H_M,
+          w: stationWm, h: STATION_H_M, imgW: stW, imgH: stH
+        },
+        sh: {
+          yMax: py + (SHIP_RING_X_PX / shW) * shipWm, yMin: py - (1 - SHIP_RING_X_PX / shW) * shipWm,
+          xMax: px + (SHIP_RING_Y_PX / shH) * shipHm, xMin: px - (1 - SHIP_RING_Y_PX / shH) * shipHm,
+          w: shipWm, h: shipHm, imgW: shW, imgH: shH
+        }
+      };
+    }
+
+    function spritesCollideWorld(px, py) {
+      const r = spriteWorldRects(px, py), st = r.st, sh = r.sh;
+      // 外接矩形快速排除：绝大多数帧在这里就返回
+      if (sh.yMax < st.yMin || sh.yMin > st.yMax || sh.xMax < st.xMin || sh.xMin > st.xMax) return false;
+      // 掩码未就绪（贴图尚未加载完成）时退化为矩形重叠判定，规则立即可用且各端一致
+      if (!__maskCache.station && stationImg.complete && (stationImg.naturalWidth || 0) > 0) __maskCache.station = buildAlphaMask(stationImg, st.imgW, st.imgH);
+      if (!__maskCache.ship && shipImg.complete && (shipImg.naturalWidth || 0) > 0) __maskCache.ship = buildAlphaMask(shipImg, sh.imgW, sh.imgH);
+      if (!__maskCache.station || !__maskCache.ship) return true;
+      // 像素级判定：按更细的飞船贴图网格扫描重叠区，任一采样点两图均不透明即相撞
+      const yLo = Math.max(sh.yMin, st.yMin), yHi = Math.min(sh.yMax, st.yMax);
+      const xLo = Math.max(sh.xMin, st.xMin), xHi = Math.min(sh.xMax, st.xMax);
+      const stepY = sh.w / sh.imgW, stepX = sh.h / sh.imgH;
+      for (let wy = yLo; wy <= yHi; wy += stepY) {
+        const shIx = Math.min(sh.imgW - 1, Math.max(0, Math.floor((sh.yMax - wy) / sh.w * sh.imgW)));
+        const stIx = Math.min(st.imgW - 1, Math.max(0, Math.floor((st.yMax - wy) / st.w * st.imgW)));
+        for (let wx = xLo; wx <= xHi; wx += stepX) {
+          const shIy = Math.min(sh.imgH - 1, Math.max(0, Math.floor((sh.xMax - wx) / sh.h * sh.imgH)));
+          if (!__maskCache.ship[shIy * sh.imgW + shIx]) continue;
+          const stIy = Math.min(st.imgH - 1, Math.max(0, Math.floor((st.xMax - wx) / st.h * st.imgH)));
+          if (__maskCache.station[stIy * st.imgW + stIx]) return true;
+        }
+      }
+      return false;
+    }
+
+    // 暴露给 AI 求解器（定义在独立的模块作用域里）复用同一撞击判定
+    try { if (window.TIANGONG) window.TIANGONG.spritesCollide = spritesCollideWorld; } catch (e) {}
+
     function drawStationAndShip(origin, shipDraw, scale) {
       ctx.save();
 
-      // 目标：空间站高度 = 绿色对接框高度的 0.75（30 m），宽度按图像长宽比展开，
-      // 使其略小于绿框，飞船可沿横向真正抵近核心舱
-      const stationH = state.targetBox.h * 0.75 * scale;   // 屏幕纵向(px)
       const imgW = Math.max(1, (stationImg.naturalWidth || stationImg.width || 120));
       const imgH = Math.max(1, (stationImg.naturalHeight || stationImg.height || 60));
-      const ar = imgW / imgH;
-      const stationW = stationH * ar;
+      const stationH = STATION_H_M * scale;          // 屏幕纵向(px)
+      const stationW = stationH * (imgW / imgH);
+      // 以端口环中心为锚点，落在原点（对接点）上
+      const stationX = origin.x - (STATION_RING_X_PX / imgW) * stationW;
+      const stationY = origin.y - (STATION_RING_Y_PX / imgH) * stationH;
 
-      // 空间站（居中）
       if (stationImg.complete) {
-        ctx.drawImage(stationImg, origin.x - stationW/2, origin.y - stationH/2, stationW, stationH);
+        ctx.drawImage(stationImg, stationX, stationY, stationW, stationH);
       } else {
         // 占位：用同样的尺寸画一个圆角矩形
         ctx.fillStyle = "rgba(255,255,255,0.16)";
         ctx.strokeStyle = "rgba(255,255,255,0.35)";
         ctx.lineWidth = 2;
-        const x = origin.x - stationW/2, y = origin.y - stationH/2, w = stationW, h = stationH;
+        const x = stationX, y = stationY, w = stationW, h = stationH;
         const r = Math.min(14, w*0.2, h*0.45);
         ctx.beginPath();
         ctx.moveTo(x+r, y);
@@ -3398,14 +4208,20 @@
         ctx.stroke();
       }
 
-      // 飞船
+      // 飞船：与空间站同一世界比例（不再设 px 上限，放大时跟着一起变大），
+      // 贴图高度由“两环等大”反推，长宽比按源图保持（此前塞进正方形会被压扁）；
+      // 再以对接机构中心为锚点，落在飞船当前位置上
+      const shipImgW = Math.max(1, (shipImg.naturalWidth || shipImg.width || 50));
+      const shipImgH = Math.max(1, (shipImg.naturalHeight || shipImg.height || 30));
+      const shipH = stationH * (shipImgH / imgH) * (STATION_RING_PX / SHIP_RING_PX);
+      const shipW = shipH * (shipImgW / shipImgH);
+      const shipX = shipDraw.drawX - (SHIP_RING_X_PX / shipImgW) * shipW;
+      const shipY = shipDraw.drawY - (SHIP_RING_Y_PX / shipImgH) * shipH;
       if (shipImg.complete) {
-        // 与空间站同一套比例：随视角缩放一起变大（上限放宽到 160px，
-        // 否则自适应放大到 2~4 倍时飞船会被锁死在 40px，看着不像在靠近）
-        const s = clamp(32 * scale, 18, 160);
-        ctx.drawImage(shipImg, shipDraw.drawX - s/2, shipDraw.drawY - s/2, s, s);
+        ctx.drawImage(shipImg, shipX, shipY, shipW, shipH);
       } else {
-        const r = clamp(10 * scale, 6, 48);
+        // 占位：按同样的口径画一个圆点（落在对接机构中心）
+        const r = Math.max(3, shipH * 0.06);
         ctx.fillStyle = "rgba(123,223,242,0.9)";
         ctx.beginPath();
         ctx.arc(shipDraw.drawX, shipDraw.drawY, r, 0, Math.PI*2);
@@ -3527,9 +4343,10 @@
       // 在世界坐标系中判定是否仍在红色测控边界框内
       return (Math.abs(y) <= state.world.w / 2) && (Math.abs(x) <= state.world.h / 2);
     }
-    // 绿色对接判定框（矩形）：径向 x 半高 h/2，沿航向 y 半宽 w/2
+    // 绿色对接判定框（矩形）：径向 |x| <= h/2，沿航向 |y - cy| <= w/2
+    // （cy = w/2，框后缘与端口平面齐平，整体落在端口外侧）
     function insideTargetBox(x, y) {
-      return Math.abs(x) <= state.targetBox.h / 2 && Math.abs(y) <= state.targetBox.w / 2;
+      return Math.abs(x) <= state.targetBox.h / 2 && Math.abs(y - state.targetBox.cy) <= state.targetBox.w / 2;
     }
     // ===== v27: Δv 放大镜 —— 脉冲施加前的速度增量矢量预览 =====
     const dvScopeEl = document.getElementById("dvScope");
@@ -3541,7 +4358,8 @@
       const speed = Math.hypot(vx, vy);
       if (speed < 1e-9) return;
       const ux = -vy / speed, uy = -vx / speed;
-      const len = Math.min(speed * k, Math.min(cx, cy) * 1.9);
+      // 箭头长度按比例放大后不再冲出面板：上限取到画布短边内 10px
+      const len = Math.min(speed * k, Math.min(cx, cy) - 10);
       const x2 = cx + ux * len, y2 = cy + uy * len;
 
       g.save();
@@ -3573,7 +4391,7 @@
       g.clearRect(0, 0, W, H);
 
       const cx = W / 2, cy = H / 2;
-      const R = Math.min(cx, cy) * 0.86;   // 满量程半径（对应 |Δv| = 0.30 m/s）
+      const R = Math.min(cx, cy) * 0.86;   // 满量程半径（对应 |Δv| = 0.15 m/s）
 
       // 同心圆 + 十字轴
       g.save();
@@ -3595,7 +4413,8 @@
       g.fillText("+y 横向", 10, cy - 12);
       g.restore();
 
-      const k = R / 0.30;
+      // 像素/速度比例：满量程 0.15 m/s 对应半径 R，比原来的 0.30 放大一倍
+      const k = R / 0.15;
 
       // 灰色虚线：上一发已施加的脉冲（作为对比基准）
       if (state.run) {
@@ -3630,8 +4449,8 @@
     }
 
     function tick() {
-      const w = viewport.clientWidth;
-      const h = viewport.clientHeight;
+      const w = stage.clientWidth;
+      const h = stage.clientHeight;
 
       const dt = 1/60;
 
@@ -3676,6 +4495,11 @@
           setStatus("SUCCESS", "成功：第 " + state.burns + " 次脉冲后完成对接");
           setLocked(false);
           TIANGONG.runFinished("success", { simTime: state.simTime, x: pos.x, y: pos.y, reason: "docked" });
+        } else if (spritesCollideWorld(pos.x, pos.y)) {
+          state.active = false;
+          setStatus("FAIL", "失败：第 " + state.burns + " 次脉冲后与空间站发生撞击");
+          setLocked(false);
+          TIANGONG.runFinished("fail", { simTime: state.simTime, x: pos.x, y: pos.y, reason: "collision" });
         } else if (!insideSafetyWorld(pos.x, pos.y)) {
           state.active = false;
           setStatus("FAIL", "失败：第 " + state.burns + " 次脉冲后超出测控边界");
@@ -3696,7 +4520,7 @@
       drawTargetBox(origin, view.scale);
       drawInitialVelocityArrow(view);
       drawPath(view);
-      drawStationAndShip(origin, shipDraw, view.scale);
+      drawStationAndShip(origin, shipDraw, view.scale * view.spriteBoost);
       drawVelocityArrow(shipDraw, vel, view.scale);
       renderDvScope();
 

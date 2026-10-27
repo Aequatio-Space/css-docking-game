@@ -202,6 +202,26 @@
       box-shadow: 0 8px 18px rgba(0,0,0,0.22);
     }
     .shareBtn:active{ transform: translateY(1px); }
+    /* v33: 顶部语言切换按钮（线条地球 + 语言名） */
+    .langBtn{
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.22);
+      background: transparent;
+      color: rgba(255,255,255,0.78);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1;
+      cursor: pointer;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+    .langBtn svg{ width: 14px; height: 14px; display: block; }
+    .langBtn:hover{ border-color: rgba(255,255,255,0.5); color: #ffffff; }
+    .langBtn:active{ transform: translateY(1px); }
     .shareOverlay{
       position: fixed; inset: 0; z-index: 80;
       background: rgba(3,6,14,0.78);
@@ -1251,6 +1271,14 @@
         <div class="kv"><span class="k">Rel y (横向)</span><span id="teleY">200.0</span></div>
         <div class="kv"><span class="k">对接距离</span><span id="teleDist">200.0</span></div>
       </div>
+      <button class="langBtn" id="langBtn" type="button" title="Switch to English" aria-label="Switch to English">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <ellipse cx="12" cy="12" rx="4.6" ry="9"/>
+        </svg>
+        <span id="langBtnLabel">EN</span>
+      </button>
     </div>
     <div class="stage" id="stage">
       <canvas id="c" width="2344" height="1658" style="width: 1172px; height: 829px;"></canvas>
@@ -1411,6 +1439,207 @@
       stars: [],
     };
 
+    // ===== v33: 中英双语切换（English UI） =====
+    // 设计约束：
+    // 1) 单文件不拆分：静态文案用“快照式”对照表（首次 applyLang 时从 DOM 捕获中文原文），
+    //    动态文案在各生成点经 T()/TF() 按当前语言产出，切语言时由各模块 relang() 重放。
+    // 2) 语言选择持久化到 localStorage（tg_lang）；默认跟随浏览器语言，非中/英环境默认中文。
+    // 3) 不改游戏内核与埋点：chapterTag 等上报字段保持中文原值，仅界面文案切换。
+    let LANG = (function () {
+      try {
+        const saved = localStorage.getItem("tg_lang");
+        if (saved === "zh" || saved === "en") return saved;
+      } catch (e) {}
+      const nav = (navigator.language || "").toLowerCase();
+      return nav.startsWith("zh") ? "zh" : (nav.startsWith("en") ? "en" : "zh");
+    })();
+
+    function T(zh, en) { return LANG === "en" ? en : zh; }
+    function TF(zh, en, vars) {
+      let s = T(zh, en);
+      if (vars) {
+        for (const k of Object.keys(vars)) {
+          s = s.split("{" + k + "}").join(String(vars[k]));
+        }
+      }
+      return s;
+    }
+    function LOCALE() { return LANG === "en" ? "en-US" : "zh-CN"; }
+
+    // [selector, querySelectorAll 索引, { text|html|title|ph|aria|dl|alt|q: 英文 } ]
+    // 中文原文无需手抄：首次 applyLang 时从 DOM 快照捕获。
+    // 注意：由 JS 动态重写的节点（pauseBtn / statState / aiModeText / aiInput placeholder /
+    // aiResumeText / aiThinkMeta / qrTab title 等）不在此表，改在各自生成函数内用 T()/TF()，
+    // 并由对应模块的 relang() 重放。
+    const I18N_STATIC = [
+      ["h1.title", 0, { text: "China Space Station Docking Game" }],
+      ["#helpBox summary", 0, { text: "How to Play" }],
+      ["#helpBox .intro", 0, { text: "Mission briefing: you are directing a rendezvous & docking from the ground. Pick proper initial relative velocities to bring the Shenzhou spacecraft close to the China Space Station. Entering the green box means success; hitting the station or flying out of the red box means failure. Good luck!" }],
+      ["#helpBox .subtitle", 0, { html: "Runs at 4× speed by default; switch between 1×/2×/4×/8× while running. <b>Click a value to type it in directly</b> (range ±0.20, precision 0.01). Multiple impulse burns are supported (the 4–5 hops in the courseware): <b>Pause</b>, adjust the parameters, then click “Execute Impulse Burn” — the spacecraft continues from its current position with its trajectory kept; <b>Reset Position</b> starts over from the beginning. <b>Manual zoom</b>: click −/＋ or scroll on the canvas to fix the zoom level; click “Auto” to restore distance-based auto zoom." }],
+      [".smallInitLabel", 0, { text: "Radial vx0", title: "Initial radial velocity vx0" }],
+      [".smallInitLabel", 1, { text: "Transverse vy0", title: "Initial transverse velocity vy0" }],
+      ["#vxVal", 0, { title: "Click to type a value directly" }],
+      ["#vyVal", 0, { title: "Click to type a value directly" }],
+      [".dvScopeHead span", 0, { text: "Δv magnifier · pre-burn preview" }],
+      [".dvScopeHead b", 0, { text: "Direction / Magnitude" }],
+      ["#startBtn", 0, { text: "Execute Impulse Burn" }],
+      ["#resetBtn", 0, { text: "Reset Position" }],
+      ["#speed1Btn", 0, { text: "1×", title: "Switchable while running" }],
+      ["#speed2Btn", 0, { text: "2×", title: "Switchable while running" }],
+      ["#speed4Btn", 0, { text: "4×", title: "Switchable while running" }],
+      ["#speed8Btn", 0, { text: "8×", title: "Switchable while running" }],
+      ["#zoomOutBtn", 0, { title: "Zoom out (or scroll on the canvas)" }],
+      ["#zoomVal", 0, { title: "Current zoom level" }],
+      ["#zoomInBtn", 0, { title: "Zoom in (or scroll on the canvas)" }],
+      ["#zoomAutoBtn", 0, { text: "Auto", title: "Restore distance-based auto zoom" }],
+      ["#shareBtn", 0, { text: "Share Image", title: "Generate a mission-success poster to save and share" }],
+      [".telemetry .kv .k", 0, { text: "Rel x (radial)" }],
+      [".telemetry .kv .k", 1, { text: "Rel y (transverse)" }],
+      [".telemetry .kv .k", 2, { text: "Docking distance" }],
+      ["#statsBadge", 0, { title: "View live usage stats and methodology" }],
+      [".statItem i", 0, { text: "Total users" }],
+      [".statItem i", 1, { text: "This term" }],
+      [".statItem i", 2, { text: "Today" }],
+      [".statsCard h3", 0, { text: "Live Mission Data" }],
+      [".cardSub", 0, { text: "All numbers come from the server stats API; the page never counts locally. No estimated values are shown when opened locally or offline." }],
+      [".statsGrid:not(.aiGrid) .cell span", 0, { text: "Total users" }],
+      [".statsGrid:not(.aiGrid) .cell span", 1, { text: "This term" }],
+      [".statsGrid:not(.aiGrid) .cell span", 2, { text: "Today" }],
+      [".statsGrid:not(.aiGrid) .cell span", 3, { text: "Dockings completed" }],
+      [".statsGrid:not(.aiGrid) .cell span", 4, { text: "Avg attempts" }],
+      [".statsGrid:not(.aiGrid) .cell span", 5, { text: "Total visits" }],
+      [".aiGrid .cell span", 0, { text: "AI users" }],
+      [".aiGrid .cell span", 1, { text: "AI questions" }],
+      [".aiGrid .cell span", 2, { text: "Suggestions adopted" }],
+      [".aiGrid .cell span", 3, { text: "Tool calls" }],
+      [".secTitle", 0, { text: "Usage trend — last 12 weeks" }],
+      [".secTitle", 1, { text: "AI tutor usage (evidence for “AI+” teaching)" }],
+      ["#trendChart", 0, { aria: "Usage trend chart of the last 12 weeks" }],
+      [".trendLegend span", 0, { html: '<i style="background:#7bdff2"></i>Weekly users' }],
+      [".trendLegend span", 1, { html: '<i style="background:#7ee2a8"></i>Dockings' }],
+      [".statsList li:nth-child(1) em", 0, { text: "Methodology" }],
+      [".statsList li:nth-child(2) em", 0, { text: "De-duplication" }],
+      [".statsList li:nth-child(2) span", 0, { text: "De-duplicated by random device ID; clearing browser data or switching devices counts as a new device, so totals may slightly exceed the real headcount. No names, student IDs, phone numbers or raw IPs are collected." }],
+      [".statsList li:nth-child(3) em", 0, { text: "Data source" }],
+      [".statsList li:nth-child(3) span", 0, { text: "Authoritative values from the server /api/stats endpoint (no local increment; raw logs can be exported as CSV for auditing)." }],
+      [".statsList li:nth-child(4) em", 0, { text: "Connection" }],
+      ["#statsCopy", 0, { text: "Copy methodology" }],
+      ["#csvLink", 0, { text: "Export raw logs (CSV)" }],
+      ["#snapLink", 0, { text: "Snapshot for reporting" }],
+      [".watermark", 0, { text: "China Space Station Docking" }],
+      ["#qrTab", 0, { text: "Scan to Play" }],
+      ["#qrClose", 0, { title: "Collapse to the side", aria: "Collapse QR code" }],
+      [".qrTitleSmall", 0, { text: "Scan to play on your phone" }],
+      ["#gameQr", 0, { title: "Click to set the online URL" }],
+      [".shareTitle", 0, { text: "Mission Success Poster" }],
+      ["#shareImg", 0, { alt: "Rendezvous & docking mission success poster" }],
+      [".shareHint", 0, { text: "On mobile, long-press the image to save it and share; on desktop, use the button below to download the PNG." }],
+      ["#shareDl", 0, { text: "Save PNG", dl: "docking-mission-success.png" }],
+      ["#shareClose", 0, { text: "Close" }],
+      ["#aiTab", 0, { title: "Open the AI tutor" }],
+      ["#aiTab span", 1, { text: "AI Tutor" }],
+      ["#aiDrawer", 0, { aria: "AI tutor drawer" }],
+      [".aiHead h3", 0, { text: "AI Tutor · Relative Motion" }],
+      ["#aiMode", 0, { title: "Current chat mode" }],
+      ["#aiClose", 0, { aria: "Collapse drawer" }],
+      ["#aiQuick .aiChip", 0, { text: "Why do I fly out", q: "Why does my spacecraft always fly out of bounds?" }],
+      ["#aiQuick .aiChip", 1, { text: "Recommend parameters", q: "Recommend a set of parameters that stably enters the docking box" }],
+      ["#aiQuick .aiChip", 2, { text: "Next burn", q: "I already made one burn — what should the next one be?" }],
+      ["#aiQuick .aiChip", 3, { text: "Speed difference", q: "Same parameters — why does the result differ at another speed multiplier?" }],
+      ["#aiQuick .aiChip", 4, { text: "vx0 / vy0 meaning", q: "What do vx0 and vy0 control respectively?" }],
+      ["#aiResumeLoad", 0, { text: "Load previous chat" }],
+      ["#aiResumeDrop", 0, { aria: "Dismiss previous chat", title: "Dismiss (history is kept)" }],
+      [".aiThink summary b", 0, { text: "AI Thinking Panel" }],
+      [".thinkEmpty", 0, { text: "Only real tool calls are recorded here: tool name, arguments, latency, and the values returned by the solver. The model never produces parameters itself." }],
+      ["#aiInput", 0, { aria: "Ask the AI tutor" }],
+      ["#aiSend", 0, { text: "Send" }],
+      [".aiFoot", 0, { text: "All values are computed by a local deterministic solver (CW analytical solution + grid search + per-speed sampling checks); the model only diagnoses and explains." }],
+    ];
+
+    let i18nZhSnap = null;
+    function snapshotI18nZh() {
+      const snap = [];
+      for (const [sel, idx, en] of I18N_STATIC) {
+        const node = document.querySelectorAll(sel)[idx];
+        if (!node) { snap.push(null); continue; }
+        const zh = {};
+        for (const k of Object.keys(en)) {
+          if (k === "text") zh.text = node.textContent;
+          else if (k === "html") zh.html = node.innerHTML;
+          else if (k === "title") zh.title = node.getAttribute("title");
+          else if (k === "ph") zh.ph = node.getAttribute("placeholder");
+          else if (k === "aria") zh.aria = node.getAttribute("aria-label");
+          else if (k === "dl") zh.dl = node.getAttribute("download");
+          else if (k === "alt") zh.alt = node.getAttribute("alt");
+          else if (k === "q") zh.q = node.getAttribute("data-q");
+        }
+        snap.push(zh);
+      }
+      return snap;
+    }
+
+    function applyI18nStatic() {
+      if (!i18nZhSnap) i18nZhSnap = snapshotI18nZh();
+      const toEn = LANG === "en";
+      for (let i = 0; i < I18N_STATIC.length; i++) {
+        const [sel, idx, en] = I18N_STATIC[i];
+        const node = document.querySelectorAll(sel)[idx];
+        const zh = i18nZhSnap[i];
+        if (!node || !zh) continue;
+        const src = toEn ? en : zh;
+        for (const k of Object.keys(src)) {
+          const v = src[k];
+          if (v === null || v === undefined) continue;
+          if (k === "text") node.textContent = v;
+          else if (k === "html") node.innerHTML = v;
+          else if (k === "title") node.setAttribute("title", v);
+          else if (k === "ph") node.setAttribute("placeholder", v);
+          else if (k === "aria") node.setAttribute("aria-label", v);
+          else if (k === "dl") node.setAttribute("download", v);
+          else if (k === "alt") node.setAttribute("alt", v);
+          else if (k === "q") node.setAttribute("data-q", v);
+        }
+      }
+    }
+
+    function applyLang(lang) {
+      LANG = (lang === "en") ? "en" : "zh";
+      try { localStorage.setItem("tg_lang", LANG); } catch (e) {}
+      document.documentElement.lang = LANG === "en" ? "en" : "zh-CN";
+      document.title = T("中国空间站交会对接小游戏", "China Space Station Rendezvous & Docking Game");
+      applyI18nStatic();
+      // 动态文案：状态消息重算 composer，按钮/统计/AI 助教由各模块 relang 重放
+      try { setStatus(state.status, state.msgCompose || state.message || ""); } catch (e) {}
+      try { refreshRunButtons(); } catch (e) {}
+      try { TIANGONG.relang(); } catch (e) {}
+      try { AI_TUTOR.relang(); } catch (e) {}
+      // 二维码占位画布文字随语言重绘（已配置真实二维码时重绘为同一张图，幂等）
+      try { renderGameQr(); } catch (e) {}
+      // qrTab 的 title 由 initQrFloat 按折叠态维护，这里按当前态重放
+      const qrTabEl = document.getElementById("qrTab");
+      if (qrTabEl) {
+        qrTabEl.title = document.body.classList.contains("qr-hidden")
+          ? T("展开二维码", "Expand QR code")
+          : T("收起二维码", "Collapse QR code");
+      }
+      const t = LANG === "en" ? "切换到中文" : "Switch to English";
+      const btn = document.getElementById("langBtn");
+      if (btn) {
+        btn.setAttribute("title", t);
+        btn.setAttribute("aria-label", t);
+      }
+      const lb = document.getElementById("langBtnLabel");
+      if (lb) lb.textContent = LANG === "en" ? "中文" : "EN";
+    }
+
+    function initLangBtn() {
+      const btn = document.getElementById("langBtn");
+      if (!btn) return;
+      btn.addEventListener("click", function () {
+        applyLang(LANG === "en" ? "zh" : "en");
+      });
+    }
+
     // ===== v25: 教学行为埋点 + 项目运行数据面板（需求一） =====
     // 设计约束：
     // 1) 数字只来自服务端 /api/stats 权威值，本地不累计、不伪造；离线时显示“离线模式”。
@@ -1482,6 +1711,9 @@
       let runWallStart = 0;
       let panelOpened = false;
       let lastStats = null;
+      let lastStatsRaw = null;
+      let lastCachedAt = null;
+      let lastOfflineCompose = null;
       let statsInFlight = false;
       let statsTimer = null;
       const finishHooks = [];
@@ -1611,7 +1843,7 @@
 
       // ---------- 运行数据面板 ----------
       function fmtNum(v) {
-        return (v == null || !isFinite(Number(v))) ? "—" : Number(v).toLocaleString("zh-CN");
+        return (v == null || !isFinite(Number(v))) ? "—" : Number(v).toLocaleString(LOCALE());
       }
       function fmtAvg(v) {
         return (v == null || !isFinite(Number(v))) ? "—" : Number(v).toFixed(1);
@@ -1656,7 +1888,12 @@
         };
       }
 
-      const DEFAULT_CALIBER = "累计=上线以来去重设备数；本学期=当前学期去重设备数；今日=统计服务器当日去重设备数。去重基于浏览器设备级随机 ID，清除浏览器数据或更换设备将计为新设备，累计人数可能略高于真实人数。";
+      function defaultCaliber() {
+        return T(
+          "累计=上线以来去重设备数；本学期=当前学期去重设备数；今日=统计服务器当日去重设备数。去重基于浏览器设备级随机 ID，清除浏览器数据或更换设备将计为新设备，累计人数可能略高于真实人数。",
+          "Total = unique devices since launch; This term = unique devices in the current term; Today = unique devices on the server day. De-duplication uses a browser-level random device ID; clearing browser data or switching devices counts as a new device, so totals may slightly exceed the real headcount."
+        );
+      }
 
       function completionRate(s) {
         if (s.uv == null || s.uv <= 0 || s.successUv == null) return null;
@@ -1667,26 +1904,28 @@
         const s = stats || normalize({});
         const ai = s.ai || {};
         const lines = [
-          "【项目运行数据说明卡】",
-          "项目：中国空间站交会对接小游戏（第4章 相对运动 · CW 近程交会）",
-          "页面：" + (canReport ? (location.origin + location.pathname) : "本地文件（离线）"),
-          "累计使用人数（UV）：" + fmtNum(s.uv),
-          "本学期使用人数：" + fmtNum(s.termUv),
-          "今日使用人数：" + fmtNum(s.todayUv),
-          "累计访问（PV）：" + fmtNum(s.pv),
-          "完成对接人次：" + fmtNum(s.completes),
-          "完成对接人数：" + fmtNum(s.successUv),
-          "对接完成率：" + (completionRate(s) || "—"),
-          "平均尝试次数：" + fmtAvg(s.avgAttempts),
-          "AI 助教使用人数：" + fmtNum(ai.visitors),
-          "AI 提问数：" + fmtNum(ai.requests),
-          "AI 建议采纳数：" + fmtNum(ai.adopted),
-          "AI 工具调用数（CW 求解器取数）：" + fmtNum(ai.toolCalls),
-          "统计口径：" + (s.caliber || DEFAULT_CALIBER),
-          "去重规则：同一设备随机 ID 去重；清除浏览器数据或更换设备将计为新设备，累计人数可能略高于真实人数；不采集姓名、学号、手机号与 IP 明文。",
-          "数据来源：服务端 /api/stats 权威值，原始事件日志可导出 CSV（/api/events.csv）审计；另有一页纸数据快照（/api/stats/snapshot）可直接打印进申报书。",
-          "数据更新时间：" + fmtTime(s.updatedAt) + (cachedAt ? "（缓存于 " + fmtTime(cachedAt) + "）" : ""),
-          "渠道标记：" + source,
+          T("【项目运行数据说明卡】", "[Usage Data Notes]"),
+          T("项目：中国空间站交会对接小游戏（第4章 相对运动 · CW 近程交会）", "Project: China Space Station Rendezvous & Docking mini-game (Ch.4 Relative Motion · CW close-range rendezvous)"),
+          T("页面：", "Page: ") + (canReport ? (location.origin + location.pathname) : T("本地文件（离线）", "Local file (offline)")),
+          T("累计使用人数（UV）：", "Total users (UV): ") + fmtNum(s.uv),
+          T("本学期使用人数：", "Users this term: ") + fmtNum(s.termUv),
+          T("今日使用人数：", "Users today: ") + fmtNum(s.todayUv),
+          T("累计访问（PV）：", "Total visits (PV): ") + fmtNum(s.pv),
+          T("完成对接人次：", "Docking completions: ") + fmtNum(s.completes),
+          T("完成对接人数：", "Unique users docked: ") + fmtNum(s.successUv),
+          T("对接完成率：", "Docking completion rate: ") + (completionRate(s) || "—"),
+          T("平均尝试次数：", "Avg. attempts: ") + fmtAvg(s.avgAttempts),
+          T("AI 助教使用人数：", "AI tutor users: ") + fmtNum(ai.visitors),
+          T("AI 提问数：", "AI questions: ") + fmtNum(ai.requests),
+          T("AI 建议采纳数：", "AI suggestions adopted: ") + fmtNum(ai.adopted),
+          T("AI 工具调用数（CW 求解器取数）：", "AI tool calls (CW solver): ") + fmtNum(ai.toolCalls),
+          T("统计口径：", "Methodology: ") + (s.caliber || defaultCaliber()),
+          T("去重规则：同一设备随机 ID 去重；清除浏览器数据或更换设备将计为新设备，累计人数可能略高于真实人数；不采集姓名、学号、手机号与 IP 明文。",
+            "De-duplication: one random device ID per browser; clearing browser data or switching devices counts as a new device, so totals may slightly exceed the real headcount; no names, student IDs, phone numbers, or plain-text IPs are collected."),
+          T("数据来源：服务端 /api/stats 权威值，原始事件日志可导出 CSV（/api/events.csv）审计；另有一页纸数据快照（/api/stats/snapshot）可直接打印进申报书。",
+            "Source: server-authoritative /api/stats; raw event logs exportable as CSV (/api/events.csv) for audit; a one-page snapshot (/api/stats/snapshot) can be printed directly into reports."),
+          T("数据更新时间：", "Data updated at: ") + fmtTime(s.updatedAt) + (cachedAt ? T("（缓存于 ", " (cached at ") + fmtTime(cachedAt) + T("）", ")") : ""),
+          T("渠道标记：", "Channel: ") + source,
         ];
         return lines.join("\n");
       }
@@ -1708,7 +1947,7 @@
           ctx.fillStyle = "rgba(255,255,255,0.35)";
           ctx.font = "22px sans-serif";
           ctx.textAlign = "center";
-          ctx.fillText(data.length ? "近 12 周暂无使用记录" : "暂无趋势数据", W / 2, H / 2 + 8);
+          ctx.fillText(data.length ? T("近 12 周暂无使用记录", "No usage in the last 12 weeks") : T("暂无趋势数据", "No trend data yet"), W / 2, H / 2 + 8);
           return;
         }
         const padL = 10, padR = 10, padT = 30, padB = 34;
@@ -1754,14 +1993,14 @@
         ctx.fillText(fmtWeek(data[0].week), padL, H - 8);
         ctx.textAlign = "right";
         ctx.fillText(fmtWeek(data[data.length - 1].week), W - padR, H - 8);
-        ctx.fillText("峰值 " + maxV, W - padR, padT - 10);
+        ctx.fillText(T("峰值 ", "Peak ") + maxV, W - padR, padT - 10);
       }
 
       function renderOffline(reason) {
         const badge = document.getElementById("statsBadge");
         if (badge) badge.classList.add("isOffline");
         const stateEl = document.getElementById("statState");
-        if (stateEl) { stateEl.hidden = false; stateEl.textContent = "离线模式"; }
+        if (stateEl) { stateEl.hidden = false; stateEl.textContent = T("离线模式", "Offline"); }
         const actions = document.getElementById("statsActions");
         if (actions) actions.hidden = true;
         setText("cardUV", "—");
@@ -1774,12 +2013,17 @@
         setText("cardAiReq", "—");
         setText("cardAiAdopt", "—");
         setText("cardAiTools", "—");
-        setText("trendRate", "对接完成率 —");
+        setText("trendRate", T("对接完成率 —", "Docking completion rate —"));
         drawTrend([]);
-        setText("cardCaliber", DEFAULT_CALIBER);
-        setText("cardState", reason || "未连接数据服务，不显示数字");
-        setText("cardUpdated", "未连接数据服务");
+        setText("cardCaliber", defaultCaliber());
+        lastOfflineCompose = (typeof reason === "function") ? reason : null;
+        const reasonText = (typeof reason === "function") ? reason()
+          : (reason || T("未连接数据服务，不显示数字", "Data service unavailable; numbers hidden"));
+        setText("cardState", reasonText);
+        setText("cardUpdated", T("未连接数据服务", "Data service unavailable"));
         lastStats = null;
+        lastStatsRaw = null;
+        lastCachedAt = null;
       }
 
       function renderStats(raw, cachedAt) {
@@ -1805,22 +2049,25 @@
         setText("cardAiTools", fmtNum(s.ai.toolCalls));
         const rate = completionRate(s);
         setText("trendRate", rate
-          ? "对接完成率 " + rate + "（" + fmtNum(s.successUv) + "/" + fmtNum(s.uv) + "）"
-          : "对接完成率 —");
+          ? TF("对接完成率 {rate}（{ok}/{all}）", "Docking completion rate {rate} ({ok}/{all})", { rate: rate, ok: fmtNum(s.successUv), all: fmtNum(s.uv) })
+          : T("对接完成率 —", "Docking completion rate —"));
         drawTrend(s.trend);
         const actions = document.getElementById("statsActions");
         if (actions) actions.hidden = !canReport;
-        setText("cardCaliber", s.caliber || DEFAULT_CALIBER);
+        setText("cardCaliber", s.caliber || defaultCaliber());
         setText("cardState", cachedAt
-          ? "显示缓存值（" + fmtTime(cachedAt) + "），当前未连接数据服务"
-          : "已连接 · 服务端权威值");
-        setText("cardUpdated", "更新于 " + fmtTime(s.updatedAt || cachedAt || Date.now()));
+          ? TF("显示缓存值（{t}），当前未连接数据服务", "Showing cached values ({t}); data service unavailable", { t: fmtTime(cachedAt) })
+          : T("已连接 · 服务端权威值", "Connected · server-authoritative values"));
+        setText("cardUpdated", TF("更新于 {t}", "Updated {t}", { t: fmtTime(s.updatedAt || cachedAt || Date.now()) }));
         lastStats = s;
+        lastStatsRaw = raw;
+        lastCachedAt = cachedAt || null;
+        lastOfflineCompose = null;
       }
 
       function refreshStats() {
         if (statsInFlight) return;
-        if (!canReport) { renderOffline("本地打开（file://），不显示统计数字"); return; }
+        if (!canReport) { renderOffline(function () { return T("本地打开（file://），不显示统计数字", "Opened locally (file://); usage numbers are not shown"); }); return; }
         let cached = null;
         try { cached = JSON.parse(store.get(KEYS.statsCache, "null")); } catch (e) { cached = null; }
 
@@ -1841,7 +2088,7 @@
           } catch (e) {}
         }).catch(function () {
           if (cached && cached.data) renderStats(cached.data, cached.at || Date.now());
-          else renderOffline("未连接数据服务（/api/stats 不可用），不显示数字");
+          else renderOffline(function () { return T("未连接数据服务（/api/stats 不可用），不显示数字", "Data service unavailable (/api/stats unreachable); numbers hidden"); });
         }).then(function () {
           statsInFlight = false;
           if (timer) clearTimeout(timer);
@@ -1927,11 +2174,11 @@
             const stats = lastStats || (cached && cached.data) || null;
             const cachedAt = lastStats ? null : (cached && cached.at);
             copyText(caliberText(stats, cachedAt)).then(function (ok) {
-              track("caliber_copy", { ok: !!ok });
-              const prev = copyBtn.textContent;
-              copyBtn.textContent = ok ? "已复制" : "复制失败，请手动截图";
-              setTimeout(function () { copyBtn.textContent = prev; }, 1600);
-            });
+                track("caliber_copy", { ok: !!ok });
+                const prev = copyBtn.textContent;
+                copyBtn.textContent = ok ? T("已复制", "Copied") : T("复制失败，请手动截图", "Copy failed; please take a screenshot");
+                setTimeout(function () { copyBtn.textContent = prev; }, 1600);
+              });
           });
         }
       }
@@ -1955,6 +2202,11 @@
         if (document.visibilityState === "hidden") flush(true);
       });
 
+      function relang() {
+        if (lastStatsRaw) renderStats(lastStatsRaw, lastCachedAt);
+        else renderOffline(lastOfflineCompose);
+      }
+
       const apiObj = {
         config: CONFIG,
         visitorId: visitorId,
@@ -1966,6 +2218,7 @@
         onRunFinished: onRunFinished,
         attempts: attempts,
         refreshStats: refreshStats,
+        relang: relang,
         flush: flush,
         init: init,
       };
@@ -2021,11 +2274,12 @@
       const VY_MIN = -0.20, VY_MAX = -0.02;
       const TOP_N = 32;            // 粗筛后进入精细评估的数量
 
-      const TOOL_LABEL = {
-        get_student_state: "读取学生状态",
-        evaluate_params: "求解器评估参数",
-        solve_docking: "求解器搜索可行解"
-      };
+      function toolLabel(name) {
+        if (name === "get_student_state") return T("读取学生状态", "Read student state");
+        if (name === "evaluate_params") return T("求解器评估参数", "Solver: evaluate params");
+        if (name === "solve_docking") return T("求解器搜索可行解", "Solver: search feasible solutions");
+        return name;
+      }
 
       // ---------------- 运行时状态 ----------------
       let refs = null;
@@ -2526,10 +2780,10 @@
         thinkTurnEl.className = "thinkTurn";
         const th = document.createElement("div");
         th.className = "th";
-        th.textContent = (label || ("第 " + st.turnNo + " 次提问")) + " · " + new Date().toLocaleTimeString("zh-CN", { hour12: false });
+        th.textContent = (label || TF("第 {n} 次提问", "Question {n}", { n: st.turnNo })) + " · " + new Date().toLocaleTimeString(LOCALE(), { hour12: false });
         thinkTurnEl.appendChild(th);
         refs.thinkBody.appendChild(thinkTurnEl);
-        refs.thinkMeta.textContent = "进行中…";
+        refs.thinkMeta.textContent = T("进行中…", "In progress…");
         scrollThink();
       }
 
@@ -2537,7 +2791,7 @@
         if (!refs || !thinkTurnEl) return;
         const end = document.createElement("div");
         end.className = "thinkEnd";
-        end.textContent = "本轮结束 · " + note;
+        end.textContent = T("本轮结束 · ", "Round ended · ") + note;
         thinkTurnEl.appendChild(end);
         refs.thinkMeta.textContent = note;
         thinkTurnEl = null;
@@ -2547,32 +2801,32 @@
       function kvRows(name, args, out) {
         const rows = [];
         if (name === "get_student_state") {
-          rows.push(["当前参数", out.current_vx0 + " / " + out.current_vy0 + " m/s"]);
-          rows.push(["尝试次数", String(out.attempts)]);
-          rows.push(["上次结果", out.last_outcome]);
+          rows.push([T("当前参数", "Current params"), out.current_vx0 + " / " + out.current_vy0 + " m/s"]);
+          rows.push([T("尝试次数", "Attempts"), String(out.attempts)]);
+          rows.push([T("上次结果", "Last result"), out.last_outcome]);
           if (out.mid_course) {
-            rows.push(["当前位置", out.mid_course.x_m + " / " + out.mid_course.y_m + " m（距离 " + out.mid_course.distance_m + " m）"]);
-            rows.push(["已机动", String(out.burns) + " 次" + (out.mid_course.can_burn_again ? " · 可继续" : " · 需重置")]);
+            rows.push([T("当前位置", "Current position"), out.mid_course.x_m + " / " + out.mid_course.y_m + TF(" m（距离 {d} m）", " m (distance {d} m)", { d: out.mid_course.distance_m })]);
+            rows.push([T("已机动", "Burns done"), TF("{n} 次", "{n}", { n: String(out.burns) }) + (out.mid_course.can_burn_again ? T(" · 可继续", " · can continue") : T(" · 需重置", " · needs reset"))]);
           }
         } else if (name === "evaluate_params") {
-          if (out && out.error) { rows.push(["错误", out.error]); return rows; }
-          rows.push(["起点", out.from_x_m + " / " + out.from_y_m + " m"]);
-          rows.push(["入参", out.vx0 + " / " + out.vy0 + " m/s"]);
-          rows.push(["最近距离", out.min_distance_m + " m @" + out.min_distance_t_s + " s"]);
-          rows.push(["入框时刻", out.entry_t_s == null ? "未入框" : out.entry_t_s + " s"]);
-          rows.push(["框内停留", out.dwell_in_box_s + " s"]);
-          rows.push(["四倍速", out.all_speeds_ok ? "全部入框" : "有失败"]);
+          if (out && out.error) { rows.push([T("错误", "Error"), out.error]); return rows; }
+          rows.push([T("起点", "Origin"), out.from_x_m + " / " + out.from_y_m + " m"]);
+          rows.push([T("入参", "Inputs"), out.vx0 + " / " + out.vy0 + " m/s"]);
+          rows.push([T("最近距离", "Closest approach"), out.min_distance_m + " m @" + out.min_distance_t_s + " s"]);
+          rows.push([T("入框时刻", "Box entry"), out.entry_t_s == null ? T("未入框", "Never enters") : out.entry_t_s + " s"]);
+          rows.push([T("框内停留", "Time in box"), out.dwell_in_box_s + " s"]);
+          rows.push([T("四倍速", "All 4 speeds"), out.all_speeds_ok ? T("全部入框", "All dock") : T("有失败", "Some fail")]);
         } else if (name === "solve_docking") {
-          rows.push(["目标", out.objective]);
-          rows.push(["起点", out.from_x_m + " / " + out.from_y_m + " m"]);
-          rows.push(["扫描", out.scanned_grid_points + " 点 · 步长 " + out.grid_step]);
-          rows.push(["可行解", out.found ? ("是（" + out.options.length + " 个）") : "否"]);
+          rows.push([T("目标", "Objective"), out.objective]);
+          rows.push([T("起点", "Origin"), out.from_x_m + " / " + out.from_y_m + " m"]);
+          rows.push([T("扫描", "Scanned"), TF("{n} 点 · 步长 {s}", "{n} points · step {s}", { n: out.scanned_grid_points, s: out.grid_step })]);
+          rows.push([T("可行解", "Feasible"), out.found ? TF("是（{n} 个）", "Yes ({n})", { n: out.options.length }) : T("否", "No")]);
           if (out.options && out.options[0]) {
             const o = out.options[0];
-            rows.push(["最优", o.vx0 + " / " + o.vy0 + " m/s"]);
-            rows.push(["入框", o.entry_t_s + " s · 最近 " + o.min_distance_m + " m"]);
+            rows.push([T("最优", "Best"), o.vx0 + " / " + o.vy0 + " m/s"]);
+            rows.push([T("入框", "Entry"), TF("{t} s · 最近 {d} m", "{t} s · closest {d} m", { t: o.entry_t_s, d: o.min_distance_m })]);
           }
-          rows.push(["耗时", out.elapsed_ms + " ms"]);
+          rows.push([T("耗时", "Elapsed"), out.elapsed_ms + " ms"]);
         }
         return rows;
       }
@@ -2584,7 +2838,7 @@
 
         const head = document.createElement("div");
         head.className = "st";
-        head.textContent = (TOOL_LABEL[name] || name) + " ";
+        head.textContent = toolLabel(name) + " ";
         const code = document.createElement("i");
         code.textContent = name + "() · " + ms + " ms";
         head.appendChild(code);
@@ -2605,7 +2859,7 @@
         }
         wrap.appendChild(ul);
         thinkTurnEl.appendChild(wrap);
-        refs.thinkMeta.textContent = "工具调用 " + st.toolCount + " 次";
+        refs.thinkMeta.textContent = TF("工具调用 {n} 次", "{n} tool call(s)", { n: st.toolCount });
         scrollThink();
       }
 
@@ -2619,7 +2873,13 @@
       }
 
       // ---------------- 消息与推荐卡 ----------------
-      const WHO = { user: "学生", ai: "AI 助教", note: "求解器实测", err: "系统提示" };
+      function whoLabel(role) {
+        if (role === "user") return T("学生", "Student");
+        if (role === "ai") return T("AI 助教", "AI Tutor");
+        if (role === "note") return T("求解器实测", "Solver verified");
+        if (role === "err") return T("系统提示", "System");
+        return role;
+      }
 
       // noWho = true 时不渲染上方的小标题（只留气泡）
       function pushMsg(role, text, noWho) {
@@ -2628,7 +2888,7 @@
         box.className = "aiMsg " + role;
         const who = document.createElement("div");
         who.className = "who";
-        who.textContent = WHO[role] || role;
+        who.textContent = whoLabel(role);
         const bub = document.createElement("div");
         bub.className = "bubble";
         bub.textContent = String(text == null ? "" : text);
@@ -2676,9 +2936,9 @@
         const n = (d.msgs || []).length;
         let when = "";
         try {
-          when = new Date(d.ts).toLocaleString("zh-CN", { hour12: false });
+          when = new Date(d.ts).toLocaleString(LOCALE(), { hour12: false });
         } catch (e) {}
-        refs.resumeText.textContent = "上次对话 · " + n + " 条" + (when ? " · " + when : "");
+        refs.resumeText.textContent = TF("上次对话 · {n} 条", "Last chat · {n} message(s)", { n: n }) + (when ? " · " + when : "");
         refs.resume.hidden = false;
       }
 
@@ -2693,7 +2953,7 @@
         refs.log.innerHTML = "";
         st.chatMsgs = [];
         // 提示放在最前面（不带“求解器实测”小标题），下面是恢复出来的问答
-        pushMsg("note", "已加载上次对话（" + msgs.length + " 条），可以直接接着问。", true);
+        pushMsg("note", TF("已加载上次对话（{n} 条），可以直接接着问。", "Loaded the previous chat ({n} message(s)) — you can keep asking.", { n: msgs.length }), true);
         for (let i = 0; i < msgs.length; i++) {
           const role = msgs[i].role === "user" ? "user" : "ai";
           pushMsg(role, msgs[i].text);
@@ -2720,9 +2980,9 @@
         box.open = true;
         const sum = document.createElement("summary");
         const title = document.createElement("b");
-        title.textContent = "思考过程";
+        title.textContent = T("思考过程", "Thinking");
         const meta = document.createElement("span");
-        meta.textContent = "思考中…";
+        meta.textContent = T("思考中…", "Thinking…");
         sum.appendChild(title);
         sum.appendChild(meta);
         sum.addEventListener("click", function () { box.dataset.touched = "1"; });
@@ -2742,7 +3002,7 @@
         box.className = "aiMsg ai typing";
         const who = document.createElement("div");
         who.className = "who";
-        who.textContent = WHO.ai;
+        who.textContent = whoLabel("ai");
         const bub = document.createElement("div");
         bub.className = "bubble";
         for (let i = 0; i < 3; i++) {
@@ -2760,7 +3020,7 @@
         box.appendChild(bub);
         refs.log.appendChild(box);
         typingEl = box;
-        if (refs.thinkMeta) refs.thinkMeta.textContent = (label || "思考中") + "…";
+        if (refs.thinkMeta) refs.thinkMeta.textContent = (label || T("思考中", "Thinking")) + "…";
         scrollLog();
       }
 
@@ -2787,11 +3047,11 @@
         card.className = "recCard";
 
         const head = document.createElement("header");
-        head.textContent = objective === "fast" ? "最快入框解"
-          : objective === "fuel" ? "最省燃料解" : "最稳入框解";
+        head.textContent = objective === "fast" ? T("最快入框解", "Fastest solution")
+          : objective === "fuel" ? T("最省燃料解", "Most fuel-efficient solution") : T("最稳入框解", "Most robust solution");
         const tag = document.createElement("span");
         tag.className = "tag";
-        tag.textContent = ev.allOk ? "四倍速全通过" : "存在倍速失败";
+        tag.textContent = ev.allOk ? T("四倍速全通过", "Passes at all 4 speeds") : T("存在倍速失败", "Fails at some speeds");
         head.appendChild(tag);
         card.appendChild(head);
 
@@ -2799,15 +3059,15 @@
         tb.className = "recTable";
         addRow(tb, "vx0", ev.vx0.toFixed(2) + " m/s", "");
         addRow(tb, "vy0", ev.vy0.toFixed(2) + " m/s", "");
-        addRow(tb, "入框时刻", ev.entry < 0 ? "—" : r1(ev.entry) + " s", "best");
-        addRow(tb, "最近距离", r2(ev.minD) + " m @" + r1(ev.minT) + " s", "best");
-        addRow(tb, "框内停留", r1(ev.dwell) + " s", "");
-        addRow(tb, "越界时刻", ev.boundT < 0 ? "不越界" : r1(ev.boundT) + " s", "");
+        addRow(tb, T("入框时刻", "Box entry"), ev.entry < 0 ? "—" : r1(ev.entry) + " s", "best");
+        addRow(tb, T("最近距离", "Closest approach"), r2(ev.minD) + " m @" + r1(ev.minT) + " s", "best");
+        addRow(tb, T("框内停留", "Time in box"), r1(ev.dwell) + " s", "");
+        addRow(tb, T("越界时刻", "Boundary crossing"), ev.boundT < 0 ? T("不越界", "Never") : r1(ev.boundT) + " s", "");
         for (let i = 0; i < SPEEDS.length; i++) {
           const sp = SPEEDS[i];
           const s = ev.sims["x" + sp];
-          addRow(tb, sp + " 倍速",
-            s.docks ? ("入框 " + r1(s.frame_t_s) + " s") : ("失败 " + r1(s.frame_t_s) + " s · " + r2(s.frame_distance_m) + " m"),
+          addRow(tb, TF("{sp} 倍速", "{sp}x speed", { sp: sp }),
+            s.docks ? TF("入框 {t} s", "Docked {t} s", { t: r1(s.frame_t_s) }) : TF("失败 {t} s · {d} m", "Failed {t} s · {d} m away", { t: r1(s.frame_t_s), d: r2(s.frame_distance_m) }),
             "");
         }
         card.appendChild(tb);
@@ -2817,11 +3077,11 @@
         const bAdopt = document.createElement("button");
         bAdopt.type = "button";
         bAdopt.className = "recAdopt";
-        bAdopt.textContent = "采纳参数";
+        bAdopt.textContent = T("采纳参数", "Adopt");
         const bRun = document.createElement("button");
         bRun.type = "button";
         bRun.className = "recRun";
-        bRun.textContent = "采纳并运行";
+        bRun.textContent = T("采纳并运行", "Adopt & run");
         bAdopt.addEventListener("click", function () { adopt(ev, false); });
         bRun.addEventListener("click", function () { adopt(ev, true); });
         btns.appendChild(bAdopt);
@@ -2831,9 +3091,9 @@
         const note = document.createElement("div");
         note.className = "recNote";
         const meta = ev.__meta;
-        note.textContent = "已量化到 0.01（与滑块显示一致）"
-          + (meta ? "；0.01 网格扫描 " + meta.scanned + " 点，耗时 " + meta.elapsed_ms + " ms" : "")
-          + "。数值由浏览器端求解器计算，模型不参与。";
+        note.textContent = T("已量化到 0.01（与滑块显示一致）", "Quantized to 0.01 (matches the slider display)")
+          + (meta ? TF("；0.01 网格扫描 {n} 点，耗时 {ms} ms", "; scanned {n} grid points at 0.01 step in {ms} ms", { n: meta.scanned, ms: meta.elapsed_ms }) : "")
+          + T("。数值由浏览器端求解器计算，模型不参与。", ". Numbers are computed by the in-browser solver; the model does not produce them.");
         card.appendChild(note);
 
         refs.log.appendChild(card);
@@ -2864,13 +3124,13 @@
         } catch (e) {}
 
         const tail = ev2.entry >= 0
-          ? "求解器预测约 " + r1(ev2.entry) + " s 进入对接框（最近 " + r2(ev2.minD) + " m）。"
-          : "求解器预测不会进入对接框。";
+          ? TF("求解器预测约 {t} s 进入对接框（最近 {d} m）。", "The solver predicts entering the docking box at ~{t} s (closest {d} m).", { t: r1(ev2.entry), d: r2(ev2.minD) })
+          : T("求解器预测不会进入对接框。", "The solver predicts it will not enter the docking box.");
         if (state.active) {
-          pushMsg("note", "已写入滑块：vx0 = " + vx.toFixed(2) + "、vy0 = " + vy.toFixed(2) + " m/s。" + tail + "当前正在运行，新参数将在下一次机动生效。");
+          pushMsg("note", TF("已写入滑块：vx0 = {vx}、vy0 = {vy} m/s。", "Written to the sliders: vx0 = {vx}, vy0 = {vy} m/s. ", { vx: vx.toFixed(2), vy: vy.toFixed(2) }) + tail + T("当前正在运行，新参数将在下一次机动生效。", "A run is in progress; the new parameters apply to the next burn."));
           return;
         }
-        pushMsg("note", "已写入滑块：vx0 = " + vx.toFixed(2) + "、vy0 = " + vy.toFixed(2) + " m/s。" + tail + "实际结果以运行为准。");
+        pushMsg("note", TF("已写入滑块：vx0 = {vx}、vy0 = {vy} m/s。", "Written to the sliders: vx0 = {vx}, vy0 = {vy} m/s. ", { vx: vx.toFixed(2), vy: vy.toFixed(2) }) + tail + T("实际结果以运行为准。", "Actual results depend on the run."));
         if (autoRun) setTimeout(function () { try { startSim(); } catch (e) {} }, 140);
       }
 
@@ -2900,21 +3160,20 @@
       }
 
       // 报错一律带上上游细节：模型名、错误码、上游原始返回（服务端已截断）。
-      const ERR_CODE_CN = {
-        empty_answer: "上游返回空正文（empty_answer）",
-        stream_incomplete: "流式响应提前断开（stream_incomplete）",
-        no_key: "服务端进程里没有模型密钥（no_key）",
-        upstream_unreachable: "连不上模型网关（upstream_unreachable）",
-        upstream_read_failed: "读取上游响应失败（upstream_read_failed）",
-        bad_upstream_body: "上游返回了非 JSON 内容（bad_upstream_body）",
-        tool_budget_exhausted: "工具调用次数用尽（tool_budget_exhausted）"
-      };
-
       function errCodeCn(code) {
         if (!code) return "";
-        if (ERR_CODE_CN[code]) return ERR_CODE_CN[code];
+        const MAP = {
+          empty_answer: T("上游返回空正文（empty_answer）", "Upstream returned an empty answer (empty_answer)"),
+          stream_incomplete: T("流式响应提前断开（stream_incomplete）", "Stream ended early (stream_incomplete)"),
+          no_key: T("服务端进程里没有模型密钥（no_key）", "No model key in the server process (no_key)"),
+          upstream_unreachable: T("连不上模型网关（upstream_unreachable）", "Model gateway unreachable (upstream_unreachable)"),
+          upstream_read_failed: T("读取上游响应失败（upstream_read_failed）", "Failed to read the upstream response (upstream_read_failed)"),
+          bad_upstream_body: T("上游返回了非 JSON 内容（bad_upstream_body）", "Upstream returned non-JSON content (bad_upstream_body)"),
+          tool_budget_exhausted: T("工具调用次数用尽（tool_budget_exhausted）", "Tool call budget exhausted (tool_budget_exhausted)")
+        };
+        if (MAP[code]) return MAP[code];
         const m = /^upstream_http_(\d+)$/.exec(code);
-        if (m) return "上游返回 HTTP " + m[1] + "（" + code + "）";
+        if (m) return TF("上游返回 HTTP {s}（{code}）", "Upstream returned HTTP {s} ({code})", { s: m[1], code: code });
         return code;
       }
 
@@ -2923,32 +3182,32 @@
         const p = err.payload || {};
         let head;
         if (err.name === "AbortError") {
-          head = "请求超时（" + Math.round(CHAT_TIMEOUT / 1000) + " s 内没有响应）";
+          head = TF("请求超时（{s} s 内没有响应）", "Request timed out (no response within {s}s)", { s: Math.round(CHAT_TIMEOUT / 1000) });
         } else if (err.status === 503) {
-          head = "服务端未配置模型密钥";
+          head = T("服务端未配置模型密钥", "Model key not configured on the server");
         } else if (err.status === 429) {
-          head = "请求过于频繁";
+          head = T("请求过于频繁", "Too many requests");
         } else if (err.status === 502) {
-          head = "上游模型服务异常";
+          head = T("上游模型服务异常", "Upstream model service error");
         } else if (err.status) {
           head = "HTTP " + err.status;
         } else {
-          head = errCodeCn(p.code || err.code) || err.message || "网络不可用";
+          head = errCodeCn(p.code || err.code) || err.message || T("网络不可用", "Network unavailable");
         }
 
         const lines = [];
-        if (p.reason) lines.push("原因：" + p.reason);
+        if (p.reason) lines.push(T("原因：", "Reason: ") + p.reason);
         const list = Array.isArray(p.attempts) ? p.attempts : [];
         if (list.length) {
           for (let i = 0; i < list.length; i++) {
             const a = list[i] || {};
-            lines.push("· " + (a.model || "模型") + " → " + (a.code || "error")
-              + (a.detail ? "：" + a.detail : ""));
+            lines.push("· " + (a.model || T("模型", "model")) + " → " + (a.code || "error")
+              + (a.detail ? T("：", ": ") + a.detail : ""));
           }
         } else if (p.code || p.detail) {
-          lines.push("· " + [p.model, p.code, p.detail].filter(Boolean).join("："));
+          lines.push("· " + [p.model, p.code, p.detail].filter(Boolean).join(T("：", ": ")));
         }
-        if (p.retry_after) lines.push("· 建议 " + p.retry_after + " s 后再试");
+        if (p.retry_after) lines.push(TF("· 建议 {s} s 后再试", "· Retry after {s}s", { s: p.retry_after }));
         return head + (lines.length ? "\n" + lines.join("\n") : "");
       }
 
@@ -3054,7 +3313,7 @@
             }
             if (!out.message) {
               const e = new Error("stream_incomplete");
-              e.payload = { code: "stream_incomplete", detail: "流式响应提前断开，没收到 done 事件" };
+              e.payload = { code: "stream_incomplete", detail: T("流式响应提前断开，没收到 done 事件", "The stream ended early; no done event received") };
               throw e;
             }
             return out;
@@ -3090,6 +3349,16 @@
         });
       }
 
+      let lastHealth = null;
+
+      function applyHealthTitle(data) {
+        if (!refs) return;
+        const on = !!(data && data.available);
+        refs.mode.title = on
+          ? TF("模型：{m} · 工具：{t}", "Model: {m} · Tools: {t}", { m: data.model, t: (data.tools || []).join(T("、", ", ")) })
+          : T("未配置模型密钥 · 规则兜底（对话走本地规则，数值仍由浏览器端求解器实算）", "No model key configured · rule-based fallback (chat runs on local rules; numbers still computed by the in-browser solver)");
+      }
+
       function refreshHealth() {
         return fetch(API_HEALTH, { cache: "no-store" })
           .then(function (resp) {
@@ -3098,12 +3367,9 @@
           })
           .then(function (data) {
             const on = !!(data && data.available);
+            lastHealth = data;
             setMode(on ? "ai" : "rule");
-            if (refs) {
-              refs.mode.title = on
-                ? "模型：" + data.model + " · 工具：" + (data.tools || []).join("、")
-                : "未配置模型密钥 · 规则兜底（对话走本地规则，数值仍由浏览器端求解器实算）";
-            }
+            applyHealthTitle(data);
           })
           .catch(function () { setMode("rule"); });
       }
@@ -3112,7 +3378,7 @@
         st.mode = m === "ai" ? "ai" : "rule";
         if (!refs) return;
         refs.mode.classList.toggle("online", st.mode === "ai");
-        refs.modeText.textContent = st.mode === "ai" ? "AI 在线" : "规则模式";
+        refs.modeText.textContent = st.mode === "ai" ? T("AI 在线", "AI online") : T("规则模式", "Rule mode");
       }
 
       // ---------------- tool-calling 闭环（流式） ----------------
@@ -3140,7 +3406,7 @@
           reason.body.textContent += s;
           reason.body.scrollTop = reason.body.scrollHeight;
           reasonChars += s.length;
-          reason.meta.textContent = "思考中 · " + reasonChars + " 字";
+          reason.meta.textContent = TF("思考中 · {n} 字", "Thinking · {n} chars", { n: reasonChars });
           scrollLog();
         }
 
@@ -3164,7 +3430,7 @@
           streamed = "";
           reason = null;
           reasonChars = 0;
-          showTyping(round === 1 ? "AI 思考中" : "AI 继续思考中");
+          showTyping(round === 1 ? T("AI 思考中", "AI thinking") : T("AI 继续思考中", "AI still thinking"));
           return chatRound(msgs, appendDelta, appendReasoning, {
             turn_id: turnId,
             session_id: TIANGONG.sessionId || "",
@@ -3172,7 +3438,7 @@
           }).then(function (data) {
             hideTyping();
             if (reason) {
-              reason.meta.textContent = reasonChars + " 字";
+              reason.meta.textContent = TF("{n} 字", "{n} chars", { n: reasonChars });
               if (!reason.box.dataset.touched) reason.box.open = false;
             }
             const msg = (data && data.message) || {};
@@ -3245,7 +3511,7 @@
           return sleep(160).then(function () {
             ruleAnswer(text);
           }).then(function () {
-            finishThink("规则模式 · 未调用模型，数值来自本地求解器");
+            finishThink(T("规则模式 · 未调用模型，数值来自本地求解器", "Rule mode · model not called; numbers from the local solver"));
             st.busy = false;
             setBusy(false);
           });
@@ -3257,8 +3523,8 @@
             e.payload = {
               error: "empty_answer",
               code: "empty_answer",
-              detail: "已跑满 " + MAX_ROUNDS + " 轮（工具调用 " + st.toolCount + " 次），模型仍未产出正文。"
-                + "常见原因：推理型模型把 max_tokens 用尽、或模型名不可用。"
+              detail: TF("已跑满 {r} 轮（工具调用 {n} 次），模型仍未产出正文。", "Ran {r} rounds ({n} tool calls) without any answer from the model.", { r: MAX_ROUNDS, n: st.toolCount })
+                + T("常见原因：推理型模型把 max_tokens 用尽、或模型名不可用。", "Common causes: a reasoning model exhausted max_tokens, or the model name is unavailable.")
             };
             throw e;
           }
@@ -3272,15 +3538,15 @@
           const status = err && err.status;
           const code = (err && err.payload && err.payload.code) || (err && err.code) || "";
           const detail = errText(err);
-          pushMsg("err", "AI 这一轮没有成功作答，改用规则兜底：教学提示与数值仍由本地求解器给出。\n\n【错误详情】\n" + detail);
+          pushMsg("err", T("AI 这一轮没有成功作答，改用规则兜底：教学提示与数值仍由本地求解器给出。", "The AI failed to answer this turn; falling back to rule mode — hints and numbers still come from the local solver.") + T("\n\n【错误详情】\n", "\n\n[Error details]\n") + detail);
           try { TIANGONG.track("ai_error", { status: status || 0, code: code || detail.slice(0, 200) }); } catch (e) {}
           // 空答只影响本轮，不必把整体模式降级；只有网关/密钥类错误才切规则模式
           if (code !== "empty_answer" && (!status || status === 503 || status === 404)) setMode("rule");
           ruleAnswer(text);
         }).then(function () {
           finishThink(st.toolCount > 0
-            ? ("工具调用 " + st.toolCount + " 次 · 模型在线")
-            : (st.mode === "ai" ? "模型直接作答 · 未调用工具" : "规则模式 · 未调用模型，数值来自本地求解器"));
+            ? TF("工具调用 {n} 次 · 模型在线", "{n} tool call(s) · model online", { n: st.toolCount })
+            : (st.mode === "ai" ? T("模型直接作答 · 未调用工具", "Model answered directly · no tool calls") : T("规则模式 · 未调用模型，数值来自本地求解器", "Rule mode · model not called; numbers from the local solver")));
           st.busy = false;
           setBusy(false);
         });
@@ -3291,17 +3557,17 @@
         if (refs.send) refs.send.disabled = !!b;
         if (refs.input) {
           refs.input.disabled = !!b;
-          refs.input.placeholder = b ? "求解器计算中…" : "例如：为什么 8 倍速会失败？";
+          refs.input.placeholder = b ? T("求解器计算中…", "Solver computing…") : T("例如：为什么 8 倍速会失败？", "e.g. Why does it fail at 8x speed?");
         }
       }
 
       // ---------------- 规则兜底（无网络也能用，数值仍来自求解器） ----------------
       function reasonCn(r) {
-        if (r === "out_of_boundary") return "越界";
-        if (r === "collision") return "撞击空间站";
-        if (r === "timeout") return "超时";
-        if (r === "docked") return "入框";
-        return r || "未知";
+        if (r === "out_of_boundary") return T("越界", "Out of bounds");
+        if (r === "collision") return T("撞击空间站", "Collision with the station");
+        if (r === "timeout") return T("超时", "Timeout");
+        if (r === "docked") return T("入框", "Docked");
+        return r || T("未知", "Unknown");
       }
 
       function speedLines(ev) {
@@ -3309,9 +3575,9 @@
         for (let i = 0; i < SPEEDS.length; i++) {
           const sp = SPEEDS[i];
           const s = ev.sims["x" + sp];
-          txt += "\n· " + sp + " 倍速：" + (s.docks
-            ? ("入框 " + r1(s.frame_t_s) + " s")
-            : ("失败（" + reasonCn(s.reason) + " " + r1(s.frame_t_s) + " s，该帧距目标 " + r2(s.frame_distance_m) + " m）"));
+          txt += TF("\n· {sp} 倍速：", "\n· {sp}x speed: ", { sp: sp }) + (s.docks
+            ? TF("入框 {t} s", "docked {t} s", { t: r1(s.frame_t_s) })
+            : TF("失败（{reason} {t} s，该帧距目标 {d} m）", "failed ({reason}, {t} s; {d} m from the target at that frame)", { reason: reasonCn(s.reason), t: r1(s.frame_t_s), d: r2(s.frame_distance_m) }));
         }
         return txt;
       }
@@ -3319,7 +3585,7 @@
       // 只有学生主动索要可行解时才给"最稳入框解"推荐卡：不请自来看起来像预设好的固定答案，
       // 专家评审容易误读为假 AI；平时只做诊断与讲解（showDiagnosis 同理，见下）。
       function asksForSolution(text) {
-        return /推荐|怎么[调设打]|帮我|给[个我点]|来[一组个份]|下一|继续|接着|可行解|入框解|稳定入|能入框的|直接给|照[着搬抄]|答案/.test(String(text || ""));
+        return /推荐|怎么[调设打]|帮我|给[个我点]|来[一组个份]|下一|继续|接着|可行解|入框解|稳定入|能入框的|直接给|照[着搬抄]|答案|recommend|suggest|solution|feasible|give me|help me|next (burn|one|try|set)|another (set|try)|best (params|parameters|values)|what should|just tell/i.test(String(text || ""));
       }
 
       function ruleAnswer(q) {
@@ -3329,7 +3595,8 @@
         if (asksForSolution(text)) {
           const r = execTool("solve_docking", { objective: "robust" });
           if (!r.rec) {
-            pushMsg("err", "求解器在当前起点的 0.01 网格内没有找到 1/2/4/8 倍速全部入框的解。可以先暂停，问「为什么总飞出去」看看当前轨迹怎么越界的。");
+            pushMsg("err", T("求解器在当前起点的 0.01 网格内没有找到 1/2/4/8 倍速全部入框的解。可以先暂停，问「为什么总飞出去」看看当前轨迹怎么越界的。",
+              "The solver found no solution within a 0.01 grid of the current origin that docks at all of 1/2/4/8x. You can pause first and ask “why does it keep flying away” to see how the trajectory crosses the boundary."));
             return;
           }
           const best = r.rec;
@@ -3338,63 +3605,64 @@
           // 以“是否已点火且可继续机动”判定起点性质：位置可能离 (0,200) 很近，但只要打过一发就是中途接续
           const fromMid = !!(state.run && canContinueBurn());
           const fromTxt = fromMid
-            ? ("我从你当前的位置 (" + r.out.from_x_m + ", " + r.out.from_y_m + ") m 接续搜索：")
-            : ("我从初始位置 (" + r.out.from_x_m + ", " + r.out.from_y_m + ") m 搜索：");
-          pushMsg("ai", fromTxt + "扫了 " + r.out.scanned_grid_points + " 组 0.01 精度的初速度，其中 " + r.out.feasible_count
-            + " 组能进入对接框。最稳的一组是 vx0 = " + best.vx0.toFixed(2) + "、vy0 = " + best.vy0.toFixed(2)
-            + " m/s：最近距离 " + r2(best.minD) + " m（" + r1(best.minT) + " s），约 " + r1(best.entry)
-            + " s 入框，框内停留 " + r1(best.dwell) + " s，四个倍速都能通过。这些数字来自求解器，不是我估的。");
+            ? TF("我从你当前的位置 ({x}, {y}) m 接续搜索：", "I continued the search from your current position ({x}, {y}) m: ", { x: r.out.from_x_m, y: r.out.from_y_m })
+            : TF("我从初始位置 ({x}, {y}) m 搜索：", "I searched from the initial position ({x}, {y}) m: ", { x: r.out.from_x_m, y: r.out.from_y_m });
+          pushMsg("ai", fromTxt + TF("扫了 {n} 组 0.01 精度的初速度，其中 {ok} 组能进入对接框。最稳的一组是 vx0 = {vx}、vy0 = {vy} m/s：最近距离 {d} m（{dt} s），约 {et} s 入框，框内停留 {dw} s，四个倍速都能通过。这些数字来自求解器，不是我估的。",
+            "scanned {n} initial-velocity sets at 0.01 precision; {ok} of them enter the docking box. The most robust is vx0 = {vx}, vy0 = {vy} m/s: closest approach {d} m (at {dt} s), entering the box at ~{et} s, staying inside for {dw} s, and passing at all four speeds. These numbers come from the solver, not from my estimates.",
+            { n: r.out.scanned_grid_points, ok: r.out.feasible_count, vx: best.vx0.toFixed(2), vy: best.vy0.toFixed(2), d: r2(best.minD), dt: r1(best.minT), et: r1(best.entry), dw: r1(best.dwell) }));
           pushRec(best, "robust");
           return;
         }
 
-        if (/倍速|帧|速度不一样|换倍速|8\s*倍|四倍/.test(text)) {
+        if (/倍速|帧|速度不一样|换倍速|8\s*倍|四倍|speed|frame rate|8x|times faster|skip/i.test(text)) {
           const evR = execTool("evaluate_params", { vx0: vx, vy0: vy });
-          if (!evR.ev) { pushMsg("err", "求解器未能识别当前参数。"); return; }
+          if (!evR.ev) { pushMsg("err", T("求解器未能识别当前参数。", "The solver could not parse the current parameters.")); return; }
           const ev = evR.ev;
           const frame = ROUND_FRAME * state.baseTimeScale;
-          let txt = "画面不是连续积分，而是每帧用 CW 解析解算一次位置：1 倍速每帧推进 " + r2(frame)
-            + " s，8 倍速每帧推进 " + r2(frame * 8) + " s。倍速越高，两帧之间跨过的距离越长，越容易“跳过”对接框。\n\n"
-            + "当前参数（" + vx.toFixed(2) + " / " + vy.toFixed(2) + "）的连续解：最近 " + r2(ev.minD) + " m，"
-            + (ev.entry >= 0 ? ("约 " + r1(ev.entry) + " s 入框，框内停留 " + r1(ev.dwell) + " s。") : "始终没有进入对接框。")
-            + "\n按真实帧长逐倍速采样：";
+          let txt = TF("画面不是连续积分，而是每帧用 CW 解析解算一次位置：1 倍速每帧推进 {f1} s，8 倍速每帧推进 {f8} s。倍速越高，两帧之间跨过的距离越长，越容易“跳过”对接框。",
+            "The view does not integrate continuously — each frame evaluates the CW closed-form solution once: at 1x each frame advances {f1} s, at 8x it advances {f8} s. The higher the speed, the longer the jump between frames, and the easier it is to “skip over” the docking box.",
+            { f1: r2(frame), f8: r2(frame * 8) })
+            + TF("\n\n当前参数（{vx} / {vy}）的连续解：最近 {d} m，", "\n\nContinuous solution for the current parameters ({vx} / {vy}): closest {d} m; ", { vx: vx.toFixed(2), vy: vy.toFixed(2), d: r2(ev.minD) })
+            + (ev.entry >= 0 ? TF("约 {t} s 入框，框内停留 {dw} s。", "it enters the box at ~{t} s and stays {dw} s.", { t: r1(ev.entry), dw: r1(ev.dwell) }) : T("始终没有进入对接框。", "it never enters the docking box."))
+            + T("\n按真实帧长逐倍速采样：", "\nSampled per real frame length at each speed:");
           txt += speedLines(ev);
           if (ev.frameSkip.length) {
-            txt += "\n\n其中 " + ev.frameSkip.join("、") + " 倍速的连续轨迹能入框，但采样点整段跳过了窗口——这就是“同样参数、换倍速结果不同”的原因。";
+            txt += TF("\n\n其中 {list} 倍速的连续轨迹能入框，但采样点整段跳过了窗口——这就是“同样参数、换倍速结果不同”的原因。",
+              "\n\nAt {list}x speed the continuous trajectory does enter the box, but the sampled points skip right across the window — that is why the same parameters give different results at different speeds.",
+              { list: ev.frameSkip.join(T("、", ", ")) });
           }
           pushMsg("ai", txt);
           return;
         }
 
-        if (/飞出去|出界|边界|失败|不进|总是|为什么/.test(text)) {
+        if (/飞出去|出界|边界|失败|不进|总是|为什么|why|fail|out of bound|boundary|fly (out|away)|flies|crash|collid|miss|never|always|doesn'?t|not dock|won'?t/i.test(text)) {
           const evR = execTool("evaluate_params", { vx0: vx, vy0: vy });
-          if (!evR.ev) { pushMsg("err", "求解器未能识别当前参数。"); return; }
+          if (!evR.ev) { pushMsg("err", T("求解器未能识别当前参数。", "The solver could not parse the current parameters.")); return; }
           const ev = evR.ev;
           const sc = scene(ev.org);
           // 沿航向线性漂移率：dy/dt ≈ −(6n·x0 + 3vy0)，x0 = 0 时退化为 −3vy0
           const rate = 6 * sc.n * sc.x0 + 3 * vy;
-          let txt = "当前参数（" + vx.toFixed(2) + " / " + vy.toFixed(2) + "），从 (" + r2(sc.x0) + ", " + r2(sc.y0) + ") m 出发：";
+          let txt = TF("当前参数（{vx} / {vy}），从 ({x}, {y}) m 出发：", "Current parameters ({vx} / {vy}), starting from ({x}, {y}) m: ", { vx: vx.toFixed(2), vy: vy.toFixed(2), x: r2(sc.x0), y: r2(sc.y0) });
           if (ev.boundT >= 0) {
-            txt += "连续轨迹在 " + r1(ev.boundT) + " s 越过 " + (ev.boundAxis === "y" ? "沿航向 400 m" : "径向 300 m") + " 边界，"
-              + (ev.entry >= 0 ? ("而最早入框要到 " + r1(ev.entry) + " s。") : ("全程最近只到 " + r2(ev.minD) + " m，从未进入对接框。"));
+            txt += TF("连续轨迹在 {t} s 越过 {axis} 边界，", "The continuous trajectory crosses the {axis} boundary at {t} s, ", { t: r1(ev.boundT), axis: ev.boundAxis === "y" ? T("沿航向 400 m", "400 m along-track") : T("径向 300 m", "300 m radial") })
+              + (ev.entry >= 0 ? TF("而最早入框要到 {t} s。", "but the earliest box entry is at {t} s.", { t: r1(ev.entry) }) : TF("全程最近只到 {d} m，从未进入对接框。", "and the closest approach is only {d} m — it never enters the docking box.", { d: r2(ev.minD) }));
           } else if (ev.entry >= 0) {
-            txt += "连续轨迹其实能入框（" + r1(ev.entry) + " s，最近 " + r2(ev.minD) + " m），但在采样帧上会被跳过：" + speedLines(ev);
+            txt += TF("连续轨迹其实能入框（{t} s，最近 {d} m），但在采样帧上会被跳过：", "The continuous trajectory does enter the box ({t} s, closest {d} m), but it gets skipped over at sampled frames:", { t: r1(ev.entry), d: r2(ev.minD) }) + speedLines(ev);
           } else {
-            txt += "连续轨迹在 " + T_LIMIT + " s 内最近只到 " + r2(ev.minD) + " m，没有越界，也没有入框。";
+            txt += TF("连续轨迹在 {limit} s 内最近只到 {d} m，没有越界，也没有入框。", "Within {limit} s the continuous trajectory only closes to {d} m — no boundary crossing, but no box entry either.", { limit: T_LIMIT, d: r2(ev.minD) });
           }
           if (Math.abs(rate) > 1e-6) {
-            txt += "\n\n直观理解：沿航向近似 y(t) ≈ y0 " + (rate >= 0 ? "+" : "−") + " " + r2(Math.abs(rate))
-              + "·t + 周期项。当前参数让飞船以约 " + r2(Math.abs(rate)) + " m/s 漂离，从 " + r2(sc.y0) + " m 漂到 "
-              + r2(sc.by) + " m 只需约 " + r1(Math.abs((sc.by - sc.y0) / rate)) + " s。想让飞船留在框内，得先把这段漂移压小。";
+            txt += TF("\n\n直观理解：沿航向近似 y(t) ≈ y0 {sign} {rate}·t + 周期项。当前参数让飞船以约 {abs} m/s 漂离，从 {y0} m 漂到 {by} m 只需约 {t} s。想让飞船留在框内，得先把这段漂移压小。",
+              "\n\nIntuition: the along-track motion is roughly y(t) ≈ y0 {sign} {rate}·t + periodic terms. With the current parameters the craft drifts away at ~{abs} m/s, taking only ~{t} s to go from {y0} m to {by} m. To keep it inside the box, you first need to suppress this drift.",
+              { sign: rate >= 0 ? "+" : "−", rate: r2(Math.abs(rate)), abs: r2(Math.abs(rate)), y0: r2(sc.y0), by: r2(sc.by), t: r1(Math.abs((sc.by - sc.y0) / rate)) });
           }
           pushMsg("ai", txt);
           return;
         }
 
-        if (/vx0|vy0|控制|含义|区别|什么意思|是什么/i.test(text)) {
-          pushMsg("ai", "vx0 是径向（指向/背离空间站方向）初速度，主要决定轨迹的横向摆动幅度；vy0 是沿航向初速度，它同时还决定了沿航向的线性漂移率（x0 ≠ 0 时还叠加 6n·x0 项）。\n\n"
-            + "在 CW 解析解里，沿航向近似为 y(t) ≈ y0 − (6n·x0 + 3vy0)·t + 周期项，所以 vy0 绝对值越大漂移越快、越容易先撞 400 m 边界；而 vx0 太小，轨迹会一直贴着对接框外侧绕，进不去。\n\n"
-            + "当前值：vx0 = " + vx.toFixed(2) + "、vy0 = " + vy.toFixed(2) + " m/s。想直接看结论就问「推荐一组参数」。");
+        if (/vx0|vy0|控制|含义|区别|什么意思|是什么|meaning|difference|what (is|are|does)|mean/i.test(text)) {
+          pushMsg("ai", T("vx0 是径向（指向/背离空间站方向）初速度，主要决定轨迹的横向摆动幅度；vy0 是沿航向初速度，它同时还决定了沿航向的线性漂移率（x0 ≠ 0 时还叠加 6n·x0 项）。\n\n在 CW 解析解里，沿航向近似为 y(t) ≈ y0 − (6n·x0 + 3vy0)·t + 周期项，所以 vy0 绝对值越大漂移越快、越容易先撞 400 m 边界；而 vx0 太小，轨迹会一直贴着对接框外侧绕，进不去。\n\n当前值：vx0 = {vx}、vy0 = {vy} m/s。想直接看结论就问「推荐一组参数」。",
+            "vx0 is the radial initial velocity (toward/away from the station); it mainly sets the sideways swing amplitude. vy0 is the along-track initial velocity, which also sets the linear along-track drift rate (plus a 6n·x0 term when x0 ≠ 0).\n\nIn the CW closed form, the along-track motion is roughly y(t) ≈ y0 − (6n·x0 + 3vy0)·t + periodic terms, so a larger |vy0| drifts faster and hits the 400 m boundary sooner; while too small a vx0 keeps the trajectory circling just outside the docking box.\n\nCurrent values: vx0 = {vx}, vy0 = {vy} m/s. To jump straight to a conclusion, ask “recommend a set of parameters”.").replace("{vx}", vx.toFixed(2)).replace("{vy}", vy.toFixed(2)));
           return;
         }
 
@@ -3404,36 +3672,40 @@
       function showDiagnosis() {
         const vx = q2(state.uiVx0), vy = q2(state.uiVy0);
         const ownTurn = !thinkTurnEl;
-        if (ownTurn) beginThink("自动诊断");
+        if (ownTurn) beginThink(T("自动诊断", "Auto diagnosis"));
         const evR = execTool("evaluate_params", { vx0: vx, vy0: vy });
         const org = evR.ev ? evR.ev.org : resolveOrg(null);
         const ev = evR.ev || evaluate(vx, vy, org);
         const s = scene(org);
-        const boxTxt = state.targetBox.w + " m × " + state.targetBox.h + " m 对接框（后缘贴端口）";
+        const boxTxt = TF("{w} m × {h} m 对接框（后缘贴端口）", "{w} m × {h} m docking box (aft edge at the port)", { w: state.targetBox.w, h: state.targetBox.h });
         // 同 ruleAnswer：以是否已点火判定“中途接续”，不看位置距离
         const fromMid = !!(state.run && canContinueBurn());
-        const fromTxt = fromMid ? ("（从当前位置 (" + r2(s.x0) + ", " + r2(s.y0) + ") m 接续）") : "";
+        const fromTxt = fromMid ? TF("（从当前位置 ({x}, {y}) m 接续）", " (continuing from the current position ({x}, {y}) m)", { x: r2(s.x0), y: r2(s.y0) }) : "";
         let body;
         if (ev.entry < 0) {
-          body = "连续轨迹最近只到 " + r2(ev.minD) + " m，没有进入 " + boxTxt + "，"
-            + (ev.boundT >= 0 ? ("并在 " + r1(ev.boundT) + " s 越过 " + (ev.boundAxis === "y" ? "沿航向 400 m" : "径向 300 m") + " 边界。") : ("在 " + T_LIMIT + " s 内始终没有入框。"))
-            + "原因是这一发脉冲给的方向让轨迹一直在目标外侧绕。";
+          body = TF("连续轨迹最近只到 {d} m，没有进入 ", "The continuous trajectory only gets as close as {d} m and never enters the ", { d: r2(ev.minD) }) + boxTxt + T("，", ", ")
+            + (ev.boundT >= 0
+              ? TF("并在 {t} s 越过 ", "and crosses the ", { t: r1(ev.boundT) }) + (ev.boundAxis === "y" ? T("沿航向 400 m", "400 m along-track") : T("径向 300 m", "300 m radial")) + TF(" 边界。", " boundary at {t} s.", { t: r1(ev.boundT) })
+              : TF("在 {t} s 内始终没有入框。", "and stays outside for the full {t} s.", { t: T_LIMIT }))
+            + T("原因是这一发脉冲给的方向让轨迹一直在目标外侧绕。", " The pulse direction keeps the trajectory circling outside the target.");
         } else if (ev.boundT >= 0 && ev.entry > ev.boundT) {
-          body = "轨迹会穿过对接框，但第一次入框在 " + r1(ev.entry) + " s，晚于 " + r1(ev.boundT) + " s 的越界时刻。";
+          body = TF("轨迹会穿过对接框，但第一次入框在 {e} s，晚于 {b} s 的越界时刻。", "The trajectory does cross the docking box, but first entry is at {e} s, later than the boundary crossing at {b} s.", { e: r1(ev.entry), b: r1(ev.boundT) });
         } else {
           const bad = [];
           for (let i = 0; i < SPEEDS.length; i++) {
             const sp = SPEEDS[i];
-            if (!ev.sims["x" + sp].docks) bad.push(sp + " 倍速");
+            if (!ev.sims["x" + sp].docks) bad.push(TF("{sp} 倍速", "{sp}x speed", { sp: sp }));
           }
-          body = "连续轨迹在 " + r1(ev.entry) + " s 入框、框内停留 " + r1(ev.dwell) + " s；但 " + bad.join("、")
-            + " 按真实帧长采样时，相邻两帧之间直接跳过了对接框窗口。";
+          body = TF("连续轨迹在 {e} s 入框、框内停留 {d} s；但 ", "The continuous trajectory enters at {e} s and stays {d} s inside; however at ", { e: r1(ev.entry), d: r1(ev.dwell) })
+            + bad.join(T("、", ", "))
+            + T(" 按真实帧长采样时，相邻两帧之间直接跳过了对接框窗口。", ", sampled at real frame lengths, the samples jump straight over the docking-box window between frames.");
         }
-        pushMsg("note", "我用求解器复算了当前参数（vx0 = " + vx.toFixed(2) + "、vy0 = " + vy.toFixed(2) + "）" + fromTxt + "：" + body);
+        pushMsg("note", TF("我用求解器复算了当前参数（vx0 = {vx}、vy0 = {vy}）", "I recomputed the current parameters with the solver (vx0 = {vx}, vy0 = {vy})", { vx: vx.toFixed(2), vy: vy.toFixed(2) }) + fromTxt + T("：", ": ") + body);
 
         // 不主动给可行解（不请自来像预设固定答案）：只指路，学生明确索要时才出推荐卡
-        pushMsg("ai", "建议先按上面的原因自己调一版跑一遍；想让求解器帮你找一组 1/2/4/8 倍速都能入框的初速度，对我说「推荐一组参数」即可。");
-        if (ownTurn) finishThink("自动诊断完成 · 求解器复算当前参数");
+        pushMsg("ai", T("建议先按上面的原因自己调一版跑一遍；想让求解器帮你找一组 1/2/4/8 倍速都能入框的初速度，对我说「推荐一组参数」即可。",
+          "Try adjusting one version yourself based on the cause above and run it; if you want the solver to find a set of initial velocities that dock at all of 1/2/4/8x speed, just tell me “recommend a set of parameters”."));
+        if (ownTurn) finishThink(T("自动诊断完成 · 求解器复算当前参数", "Auto diagnosis done · solver recomputed current params"));
       }
 
       // ---------------- 运行结果钩子 ----------------
@@ -3450,14 +3722,15 @@
             let tail = "";
             if (p.entry >= 0 && isFinite(actual)) {
               const diff = r1(actual - p.entry);
-              tail = "（预测 " + r1(p.entry) + " s，偏差 " + (diff >= 0 ? "+" : "") + diff + " s）";
+              tail = TF("（预测 {t} s，偏差 {d} s）", " (predicted {t} s, deviation {d} s)", { t: r1(p.entry), d: (diff >= 0 ? "+" : "") + diff });
             }
-            pushMsg("note", "采纳参数后的实测：入框 " + r1(actual) + " s" + tail
-              + "，该帧距目标中心 " + (dist == null ? "—" : r2(dist)) + " m。");
+            pushMsg("note", TF("采纳参数后的实测：入框 {t} s", "Measured after adopting the parameters: docked at {t} s", { t: r1(actual) }) + tail
+              + TF("，该帧距目标中心 {d} m。", "; that frame was {d} m from the target center.", { d: (dist == null ? "—" : r2(dist)) }));
           } else if (outcome === "fail") {
-            pushMsg("note", "采纳参数后的实测：在 " + r1(actual) + " s 超出测控边界。连续解预测入框 "
-              + (p.entry >= 0 ? (r1(p.entry) + " s") : "未入框")
-              + "，说明当前倍速的帧步长让采样点跳过了对接框窗口。");
+            pushMsg("note", TF("采纳参数后的实测：在 {t} s 超出测控边界。连续解预测入框 ",
+              "Measured after adopting the parameters: crossed the boundary at {t} s. The continuous solution predicted box entry at ", { t: r1(actual) })
+              + (p.entry >= 0 ? (r1(p.entry) + " s") : T("未入框", "never entered"))
+              + T("，说明当前倍速的帧步长让采样点跳过了对接框窗口。", ", meaning the frame step at the current speed makes the samples jump over the docking-box window."));
           }
         }
 
@@ -3579,11 +3852,28 @@
           refs.resumeDrop.addEventListener("click", hideResume);
         }
 
-        pushMsg("ai", "我是这门课的 AI 助教。轨道参数全部由浏览器里的确定性求解器计算（CW 解析解 + 0.01 网格 + 逐倍速采样校验），我只负责诊断和解释。可以直接问我「为什么总飞出去」或「推荐一组参数」。");
+        pushMsg("ai", T("我是这门课的 AI 助教。轨道参数全部由浏览器里的确定性求解器计算（CW 解析解 + 0.01 网格 + 逐倍速采样校验），我只负责诊断和解释。可以直接问我「为什么总飞出去」或「推荐一组参数」。",
+          "I'm the AI tutor for this course. All orbital numbers come from the deterministic in-browser solver (CW closed form + 0.01 grid + per-speed frame sampling); I only diagnose and explain. Ask me “why does it keep flying away” or “recommend a set of parameters”."));
         // 有上次留下的对话就提示一句，是否恢复由用户决定
         const saved = readSavedChat();
         if (saved) showResume(saved);
         refreshHealth();
+      }
+
+      // 语言切换：重放模式文案、输入框占位、健康态 title 与恢复条
+      function relang() {
+        if (!refs) return;
+        setMode(st.mode);
+        setBusy(st.busy);
+        if (lastHealth) applyHealthTitle(lastHealth);
+        if (refs.resume && !refs.resume.hidden) {
+          const saved = readSavedChat();
+          if (saved) showResume(saved);
+        }
+        // 尚未跑过任何思考轮次时重置占位文案（跑过则保留当轮语言的历史记录）
+        if (refs.thinkMeta && refs.thinkBody && !refs.thinkBody.querySelector(".thinkTurn")) {
+          refs.thinkMeta.textContent = T("未调用", "Not called");
+        }
       }
 
       return {
@@ -3591,7 +3881,8 @@
         open: openPanel,
         close: closePanel,
         solve: solve,
-        evaluate: evaluate
+        evaluate: evaluate,
+        relang: relang
       };
     })();
 
@@ -3701,12 +3992,15 @@
       return v;
     }
 
-    function setStatus(status, message="") {
+    function setStatus(status, compose="") {
       state.status = status;
+      // v33: compose 可为字符串，或为“文案生成函数”（切换语言时按当前语言重算重放）
+      state.msgCompose = (typeof compose === "function") ? compose : null;
+      const message = (typeof compose === "function") ? compose() : compose;
       state.message = message;
       const map = {
         "STANDBY": "STANDBY",
-        "RUNNING": "机动执行中",
+        "RUNNING": T("机动执行中", "BURNING"),
         "SUCCESS": "SUCCESS",
         "FAIL": "FAIL",
         "PAUSED": "PAUSED",
@@ -3724,6 +4018,12 @@
       el.statusDot.style.background = color;
       el.badge.style.borderColor = color.replace("0.95", "0.35");
       if (el.shareBtn) el.shareBtn.hidden = (status !== "SUCCESS");
+    }
+
+    // v33: msgText 直写统一入口（支持 composer，供语言切换时重放）
+    function setMsgText(compose) {
+      state.msgCompose = (typeof compose === "function") ? compose : null;
+      el.msgText.textContent = (typeof compose === "function") ? compose() : (compose || "");
     }
 
     function setLocked(locked) {
@@ -3745,7 +4045,7 @@
       if (vy === 0) el.vy.value = "0";
       el.vxVal.textContent = state.uiVx0.toFixed(2);
       el.vyVal.textContent = state.uiVy0.toFixed(2);
-      if (state.locked) el.msgText.textContent = "参数已锁定：修改将在下一次机动生效";
+      if (state.locked) setMsgText(() => T("参数已锁定：修改将在下一次机动生效", "Parameters locked: changes apply to the next burn"));
     }
     const onSliderInput = () => {
       syncFromSliders();
@@ -3794,7 +4094,7 @@
           el.vy.value = String(v);
           el.vyVal.textContent = v.toFixed(2);
         }
-        if (state.locked) el.msgText.textContent = "参数已锁定：修改将在下一次机动生效";
+        if (state.locked) setMsgText(() => T("参数已锁定：修改将在下一次机动生效", "Parameters locked: changes apply to the next burn"));
         renderDvScope();   // 立即刷新 Δv 放大镜，不必等下一帧
         TIANGONG.trackParam(state.uiVx0, state.uiVy0, "typed");
       };
@@ -3896,7 +4196,7 @@
       if (!el.startBtn) return;
       el.startBtn.disabled = state.active;
       el.pauseBtn.disabled = !state.run;
-      el.pauseBtn.textContent = state.active ? "暂停" : (state.paused ? "继续" : "暂停");
+      el.pauseBtn.textContent = state.active ? T("暂停", "Pause") : (state.paused ? T("继续", "Resume") : T("暂停", "Pause"));
       el.pauseBtn.classList.toggle("isPaused", !state.active && state.paused);
       el.resetBtn.disabled = !state.run && state.simTime === 0 && state.path.length === 0;
     }
@@ -3934,8 +4234,8 @@
       state.path.push({ x: pos0.x, y: pos0.y });
 
       setStatus("RUNNING", fresh
-        ? ("第 1 次脉冲：参数已锁定，运行中修改不生效")
-        : ("第 " + state.burns + " 次脉冲：从当前位置 (" + x0.toFixed(0) + ", " + y0.toFixed(0) + ") m 继续"));
+        ? (() => T("第 1 次脉冲：参数已锁定，运行中修改不生效", "Burn 1: parameters locked; changes apply to the next burn"))
+        : (() => TF("第 {n} 次脉冲：从当前位置 ({x}, {y}) m 继续", "Burn {n}: continuing from ({x}, {y}) m", { n: state.burns, x: x0.toFixed(0), y: y0.toFixed(0) })));
       setLocked(true);
       TIANGONG.runStarted(state.run);
       refreshRunButtons();
@@ -3946,12 +4246,12 @@
       if (state.active) {
         state.active = false;
         state.paused = true;
-        setStatus("PAUSED", "已暂停：可改参数后再来一次脉冲，或点“继续”");
+        setStatus("PAUSED", () => T("已暂停：可改参数后再来一次脉冲，或点“继续”", "Paused: adjust parameters for another burn, or press “Resume”"));
         setLocked(false);
       } else if (state.paused) {
         state.active = true;
         state.paused = false;
-        setStatus("RUNNING", "继续运行：从暂停位置接着积分");
+        setStatus("RUNNING", () => T("继续运行：从暂停位置接着积分", "Resumed: integrating from the paused position"));
         setLocked(true);
       }
       refreshRunButtons();
@@ -3964,7 +4264,7 @@
       state.run = null;
       state.burns = 0;
       resetSimVisual();
-      setStatus("STANDBY", "已重置：飞船回到初始位置，可重新开始");
+      setStatus("STANDBY", () => T("已重置：飞船回到初始位置，可重新开始", "Reset: spacecraft back to the start, ready for a new run"));
       setLocked(false);
       if (wasRunning) {
         TIANGONG.runFinished("abort", {
@@ -3989,7 +4289,7 @@
       state.speedMult = mult;
       refreshSpeedButtons();
       if (state.active) {
-        el.msgText.textContent = `倍速已切换：${mult}x（运行中立即生效）`;
+        setMsgText(() => TF("倍速已切换：{m}x（运行中立即生效）", "Speed switched to {m}x (effective immediately while running)", { m: mult }));
       }
     }
     el.speed1Btn.addEventListener("click", () => setSpeedMult(1));
@@ -4087,7 +4387,7 @@
       ctx.fillStyle = "rgba(90, 220, 140, 0.85)";
       ctx.font = "14px ui-sans-serif, system-ui";
       // v28: 窄屏（框宽贴画布边）时按文字实际宽度居中并夹在画布内，避免右侧被裁
-      const boxLabel = "对接判定框 " + state.targetBox.w + " m × " + state.targetBox.h + " m（后缘贴端口）";
+      const boxLabel = TF("对接判定框 {w} m × {h} m（后缘贴端口）", "Docking box {w} m × {h} m (aft edge at the port)", { w: state.targetBox.w, h: state.targetBox.h });
       const labelW = ctx.measureText(boxLabel).width;
       const viewW = ctx.canvas.clientWidth || ctx.canvas.width;
       ctx.fillText(boxLabel, clamp(cx - labelW / 2, 8, Math.max(8, viewW - labelW - 8)),
@@ -4133,8 +4433,8 @@
 
       ctx.fillStyle = "rgba(255,255,255,0.70)";
       ctx.font = "14px ui-sans-serif, system-ui";
-      ctx.fillText("+x (径向)", origin.x + 10, 18);
-      ctx.fillText("+y (横向)", 10, origin.y - 12);
+      ctx.fillText(T("+x (径向)", "+x (radial)"), origin.x + 10, 18);
+      ctx.fillText(T("+y (横向)", "+y (transverse)"), 10, origin.y - 12);
 
       ctx.restore();
     }
@@ -4272,10 +4572,10 @@
       g.textAlign = "center";
       g.fillStyle = "rgba(255,255,255,0.96)";
       g.font = "900 54px " + FONT;
-      g.fillText("中国空间站交会对接", W / 2, 92);
+      g.fillText(T("中国空间站交会对接", "China Space Station Docking"), W / 2, 92);
       g.fillStyle = "rgba(126,226,168,0.98)";
       g.font = "900 46px " + FONT;
-      g.fillText("任务成功 · 完成对接", W / 2, 156);
+      g.fillText(T("任务成功 · 完成对接", "Mission Success · Docked"), W / 2, 156);
 
       // 当前画面快照（星野、轨迹与两船最终相对位置，即学生自己玩出来的成功画面）
       const src = document.getElementById("c");
@@ -4310,10 +4610,10 @@
       const secs = Math.max(0, Math.round(state.simTime || 0));
       g.fillStyle = "rgba(255,255,255,0.92)";
       g.font = "700 34px " + FONT;
-      g.fillText("脉冲机动 " + (state.burns || 0) + " 次 · 用时 " + secs + " 秒", W / 2, snapY + snapH + 58);
+      g.fillText(TF("脉冲机动 {b} 次 · 用时 {s} 秒", "{b} burn(s) · {s}s elapsed", { b: (state.burns || 0), s: secs }), W / 2, snapY + snapH + 58);
       g.fillStyle = "rgba(255,255,255,0.55)";
       g.font = "400 26px " + FONT;
-      g.fillText(new Date().toLocaleDateString("zh-CN"), W / 2, snapY + snapH + 100);
+      g.fillText(new Date().toLocaleDateString(LOCALE()), W / 2, snapY + snapH + 100);
 
       // 游戏二维码（复用页面 #gameQr，线上环境即本页地址）+ 引导语
       const qr = document.getElementById("gameQr");
@@ -4323,12 +4623,12 @@
       if (qr && qr.width > 0) g.drawImage(qr, qrX, qrY, qrSize, qrSize);
       g.fillStyle = "rgba(255,255,255,0.85)";
       g.font = "700 28px " + FONT;
-      g.fillText("扫码一起挑战", W / 2, qrY + qrSize + 48);
+      g.fillText(T("扫码一起挑战", "Scan & play together"), W / 2, qrY + qrSize + 48);
 
       // 页脚
       g.fillStyle = "rgba(123,223,242,0.75)";
       g.font = "400 24px " + FONT;
-      g.fillText("人工智能 + 虚拟仿真实验 · 长按保存 / 转发朋友圈", W / 2, H - 40);
+      g.fillText(T("人工智能 + 虚拟仿真实验 · 长按保存 / 转发朋友圈", "AI + Virtual Simulation Lab · Long-press to save & share"), W / 2, H - 40);
 
       return cv;
     }
@@ -4580,8 +4880,8 @@
       g.fillStyle = "rgba(255,255,255,0.45)";
       g.font = "20px ui-sans-serif, system-ui";
       g.textAlign = "left";
-      g.fillText("+x 径向", cx + 8, 26);
-      g.fillText("+y 横向", 10, cy - 12);
+      g.fillText(T("+x 径向", "+x radial"), cx + 8, 26);
+      g.fillText(T("+y 横向", "+y transverse"), 10, cy - 12);
       g.restore();
 
       // 像素/速度比例：满量程 0.15 m/s 对应半径 R，比原来的 0.30 放大一倍
@@ -4603,10 +4903,10 @@
       g.font = "18px ui-sans-serif, system-ui";
       g.textAlign = "right";
       g.fillStyle = "rgba(123,223,242,0.95)";
-      g.fillText("本次 Δv", W - 12, H - 34);
+      g.fillText(T("本次 Δv", "This Δv"), W - 12, H - 34);
       if (state.run) {
         g.fillStyle = "rgba(255,255,255,0.45)";
-        g.fillText("上一发", W - 12, H - 12);
+        g.fillText(T("上一发", "Previous"), W - 12, H - 12);
       }
       g.restore();
 
@@ -4663,17 +4963,17 @@
       if (state.active) {
         if (insideTargetBox(pos.x, pos.y)) {
           state.active = false;
-          setStatus("SUCCESS", "成功：第 " + state.burns + " 次脉冲后完成对接");
+          setStatus("SUCCESS", () => TF("成功：第 {n} 次脉冲后完成对接", "Success: docking completed after {n} burn(s)", { n: state.burns }));
           setLocked(false);
           TIANGONG.runFinished("success", { simTime: state.simTime, x: pos.x, y: pos.y, reason: "docked" });
         } else if (spritesCollideWorld(pos.x, pos.y)) {
           state.active = false;
-          setStatus("FAIL", "失败：第 " + state.burns + " 次脉冲后与空间站发生撞击");
+          setStatus("FAIL", () => TF("失败：第 {n} 次脉冲后与空间站发生撞击", "Failed: collided with the station after {n} burn(s)", { n: state.burns }));
           setLocked(false);
           TIANGONG.runFinished("fail", { simTime: state.simTime, x: pos.x, y: pos.y, reason: "collision" });
         } else if (!insideSafetyWorld(pos.x, pos.y)) {
           state.active = false;
-          setStatus("FAIL", "失败：第 " + state.burns + " 次脉冲后超出测控边界");
+          setStatus("FAIL", () => TF("失败：第 {n} 次脉冲后超出测控边界", "Failed: exceeded tracking boundary after {n} burn(s)", { n: state.burns }));
           setLocked(false);
           TIANGONG.runFinished("fail", { simTime: state.simTime, x: pos.x, y: pos.y, reason: "out_of_boundary" });
         } else {
@@ -5060,11 +5360,11 @@ setupTypeInfo:function(test,maskPattern){
       ctx2.fillStyle = "rgba(0,0,0,0.78)";
       ctx2.font = "bold 14px system-ui, -apple-system, Segoe UI, sans-serif";
       ctx2.textAlign = "center";
-      ctx2.fillText("请先部署到网站", w / 2, h / 2 - 8);
+      ctx2.fillText(T("请先部署到网站", "Deploy to a website first"), w / 2, h / 2 - 8);
 
       ctx2.fillStyle = "rgba(0,0,0,0.62)";
       ctx2.font = "12px system-ui, -apple-system, Segoe UI, sans-serif";
-      ctx2.fillText("点击此处设置链接", w / 2, h / 2 + 16);
+      ctx2.fillText(T("点击此处设置链接", "Click to set the link"), w / 2, h / 2 + 16);
     }
 
     function renderGameQr() {
@@ -5097,7 +5397,7 @@ setupTypeInfo:function(test,maskPattern){
       const setHidden = (hidden) => {
         document.body.classList.toggle("qr-hidden", hidden);
         tab.setAttribute("aria-expanded", hidden ? "false" : "true");
-        tab.title = hidden ? "展开二维码" : "收起二维码";
+        tab.title = hidden ? T("展开二维码", "Expand QR code") : T("收起二维码", "Collapse QR code");
       };
       closeBtn.addEventListener("click", () => setHidden(true));
       tab.addEventListener("click", () => setHidden(false));
@@ -5108,6 +5408,10 @@ setupTypeInfo:function(test,maskPattern){
 
     // AI 助教侧栏 + 确定性求解器（无 Key / 断网时自动降级为规则模式）
     try { AI_TUTOR.init(); } catch (e) {}
+
+    // v33: 中英双语——绑定语言切换按钮并按当前语言重放全部文案
+    try { initLangBtn(); } catch (e) {}
+    try { applyLang(LANG); } catch (e) {}
 
     requestAnimationFrame(tick);
   </script>

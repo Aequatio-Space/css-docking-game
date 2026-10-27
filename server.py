@@ -1200,7 +1200,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
         # 静态请求不刷屏，只保留错误
-        if args and str(args[1]).startswith(("4", "5")):
+        if len(args) > 1 and str(args[1]).startswith(("4", "5")):
             print("[%s] %s" % (self.log_date_time_string(), fmt % args), file=sys.stderr)
 
     def _read_json(self, limit):
